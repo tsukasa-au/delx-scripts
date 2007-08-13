@@ -2,14 +2,9 @@
 
 import random, string, sys
 
+chars = filter(lambda x: not x.isspace(), string.printable)
 def generate(length):
-	passwd = ""
-	for i in xrange(length):
-		c = random.choice(string.printable)
-		while c.isspace():
-			c = random.choice(string.printable)
-		passwd += c
-	return passwd
+	return "".join([random.choice(chars) for i in xrange(length)])
 
 if __name__ == "__main__":
 	try:
