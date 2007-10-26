@@ -15,7 +15,10 @@ import email, email.utils, smtplib, sys, urllib
 
 # Get the to addresses
 toAddrs = sys.argv[1:]
-toAddrs.remove("--")
+try:
+	toAddrs.remove("--")
+except ValueError:
+	pass
 if len(toAddrs) == 0 or filter(lambda to: to.startswith("-"), toAddrs):
 	# Either no addresses, or an unknown parameter
 	print >>sys.stderr, "Usage: %s toAddr ..." % sys.argv[0]
@@ -28,6 +31,8 @@ try:
 		if host.endswith(hostMatch):
 			# Got the correct smtpServer
 			break
+	else:
+		raise Exception, "No match for hostname: %s" % host
 except Exception, e:
 	print >>sys.stderr, "Error! Couldn't pick an SMTP server"
 	print >>sys.stderr, e
