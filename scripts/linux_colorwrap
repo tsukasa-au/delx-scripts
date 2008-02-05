@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-PAGERS = ["less", "more", "tail", "head", "grep"]
+PAGERS = ["less", "more", "most", "tail", "head"]
 
 # Usage:
 # * Put this file into ~/bin/colorwrap
@@ -9,24 +9,58 @@ PAGERS = ["less", "more", "tail", "head", "grep"]
 #     alias grep="colorwrap grep"
 
 
-import os, os.path, sys
+import os, os.path, sys, time
 
+class Process(object):
+	def __init__(self, pid):
+		self.pid = pid
+	
+	@property
+	def stdin(self):
+		return os.readlink("/proc/%s/fd/0" % self.pid)
+	
+	@property
+	def stdout(self):
+		return os.readlink("/proc/%s/fd/1" % self.pid)
+	
+	@property
+	def cmdline(self):
+		return file("/proc/%s/cmdline" % self.pid).read().split("\x00")
+
+def validProcesses():
+	for pid in filter(str.isdigit, os.listdir("/proc/")):
+		if os.path.exists("/proc/%s/fd/0" % pid):
+			yield Process(pid)
+
+def isatty(filename):
+	try:
+		stdout = file(cur.stdout)
+		return os.isatty(stdout.fileno())
+	except IOError:
+		return False
+
+# Follow from current pid until the end of the chain
+count = 0
+cur = Process(os.getpid())
+while count < 32 and cur.stdout.startswith("pipe:"):
+	last = cur
+	for cur in validProcesses():
+		try:
+			if last.stdout == cur.stdin:
+				count = 0
+				break
+		except OSError:
+			continue
+	else:
+		cur = last
+		count += 1
+		time.sleep(0.001)
+
+# Use colour or not
 command = sys.argv[1]
 args = sys.argv[1:]
-pipe = os.readlink("/proc/%d/fd/1" % os.getpid())
-
-for d in filter(str.isdigit, os.listdir("/proc/")):
-	d = "/proc/" + d
-	fd = "%s/fd/0" % d
-	if not os.path.exists(fd):
-		continue
-	if os.readlink(fd) == pipe:
-		line = file("%s/cmdline" % d).read().split("\x00")
-		if line[0] == "python" and line[1] == sys.argv[0] or line[0] in PAGERS:
-			args.insert(1, "--color=always")
-			break
-else:
-	args.insert(1, "--color=auto")
+if cur.cmdline in PAGERS or isatty(cur.stdout):
+	args.insert(1, "--color=always")
 
 os.execvp(command, args)
 
