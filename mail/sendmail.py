@@ -1,62 +1,139 @@
 #!/usr/bin/env python
 
-# Specify SMTP servers here
-smtpServerList = (
-	(".internode.on.net", "mail.internode.on.net"),
-	(".usyd.edu.au", "mail.usyd.edu.au"),
-	(".iinet.net.au", "mail.iinet.net.au"),
-	(".netspace.net.au", "mail.netspace.net.au"),
-	(".optusnet.com.au", "mail.optusnet.com.au"),
-)
+import decorators
+import smtplib, email, urllib
+import subprocess, sys, optparse
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
-###DEFAULT_SERVER = None
+#### USER CONFIG #####
+def getUserConfig():
+	smtpServers = (
+			SMTPProxy(remoteServer='mail.internode.on.net', domainSuffix='.internode.on.net'),
+			SMTPProxy(remoteServer='smtp.usyd.edu.au', domainSuffix='.usyd.edu.au'),
+			SMTPProxy(remoteServer='mail.iinet.net.au', domainSuffix='.iinet.net.au'),
+			SMTPProxy(remoteServer='mail.netspace.net.au', domainSuffix='.netspace.net.au'),
+			SMTPProxy(remoteServer='mail.optusnet.com.au', domainSuffix='.optusnet.com.au'),
+			SMTPProxySSH(remoteServer='kagami.tsukasa.net.au'), # Fall back to sending the email via ssh if nothing else
+	)
 
-import email, email.utils, smtplib, sys, urllib, subprocess
+	return smtpServers
 
-# Get the to addresses
-toAddrs = sys.argv[1:]
-try:
-	toAddrs.remove("--")
-except ValueError:
-	pass
-if len(toAddrs) == 0 or filter(lambda to: to.startswith("-"), toAddrs):
-	# Either no addresses, or an unknown parameter
-	print >>sys.stderr, "Usage: %s toAddr ..." % sys.argv[0]
-	sys.exit(1)
+#### REAL CODE STARTS HERE ####
 
-print os.environ
-# Pick a SMTP server
-try:
-	host = urllib.urlopen("http://suits.ug.it.usyd.edu.au/myip.php").read().strip()
-	for hostMatch, smtpServer in smtpServerList:
-		if host.endswith(hostMatch):
+class SMTPProxyBase(object):
+	def __repr__(self):
+		return '%s(%s)' % (self.__class__.__name__, 
+				', '.join('%s=%r' % (k, getattr(self, k)) for k in self.__slots__)
+				)
+
+class SMTPProxy(SMTPProxyBase):
+	__slots__ = (
+			'remoteServer',
+			'domainSuffix',
+			'username',
+			'password',
+			'useSSL',
+		)
+	@decorators.logCall
+	def __init__(self, remoteServer, domainSuffix, username=None, password=None, useSSL=False):
+		self.remoteServer = remoteServer
+		self.domainSuffix = domainSuffix
+
+		self.username = username
+		self.password = password
+		self.useSSL = useSSL
+
+	def doesHandle(self, localhostName):
+		'''Determines if this SMTPProxy can be used within this domain'''
+		if localhostName is None:
+			return False
+		else:
+			return localhostName.endswith(self.domainSuffix)
+
+	def sendmail(self, fromAddr, toAddrs, message):
+		'''
+		Actually send the mail.
+
+		Returns true if the mail was successfully send
+		'''
+
+		smtp = smtplib.SMTP(self.remoteServer)
+		if self.useSSL:
+			smtp.starttls()
+		if self.username is not None and self.password is not None:
+			smtp.login(self.username, self.password)
+		smtp.sendmail(fromAddr, toAddrs, message)
+		smtp.quit()
+		return True
+
+class SMTPProxySSH(SMTPProxyBase):
+	__slots__ = ('remoteServer',)
+	@decorators.logCall
+	def __init__(self, remoteServer):
+		self.remoteServer = remoteServer
+
+	def doesHandle(self, *args, **kwargs):
+		'''
+		Determines if this SMTPProxySSH can be used within this domain.
+		Note: This method returns true for all values.
+		'''
+		return True
+
+	def sendmail(self, fromAddr, toAddrs, message):
+		'''
+		Actually send the mail.
+
+		Returns true if the mail was successfully send
+		'''
+		cmdline = ['ssh', self.remoteServer, '/usr/sbin/sendmail', '--']
+		cmdline.extend(toAddrs)
+		process = subprocess.Popen(cmdline, stdin=subprocess.PIPE)
+		process.communicate(message)
+		return not bool(process.wait())
+
+def getOptionParser():
+	parser = optparse.OptionParser(usage="%prog [options] toAddress1 [toAddress2] ...")
+	parser.add_option('--debug',
+			action='store_const', dest='debugLevel', const=logging.DEBUG,
+			help='Sets the logging level to debug')
+	parser.add_option('--warn',
+			action='store_const', dest='debugLevel', const=logging.WARNING,
+			help='Sets the logging level to warn')
+	parser.set_default('debugLevel', logging.ERROR)
+
+	return parser
+
+def main():
+	# Get the to addresses
+	parser = getOptionParser()
+	options, toAddrs = parser.parse_args()
+	if not toAddrs:
+		parser.error('No to addresses found')
+
+	# Pick a SMTP server
+	try:
+		host = urllib.urlopen("http://suits.ug.it.usyd.edu.au/myip.php").read().strip()
+	except:
+		host = None
+		logging.exception('Failed to grab our external domain name')
+
+	for smtpProxy in getUserConfig():
+		if smtpProxy.doesHandle(host):
 			# Got the correct smtpServer
+			logging.info('Using the Proxy %r to connect from %s', smtpProxy, host)
 			break
 	else:
-		raise Exception, "No match for hostname: %s" % host
-except Exception, e:
-	if 'DEFAULT_SERVER' in dir():
-		smtpServer = DEFAULT_SERVER
-	else:
-		print >>sys.stderr, "Error! Couldn't pick an SMTP server"
-		print >>sys.stderr, e
-		sys.exit(1)
+		logging.info('Did not find a proxy to conncet from %s', host)
+		return False
 
-# Get the from address
-message = sys.stdin.read()
-fromAddr = email.message_from_string(message)["from"]
-fromAddr = email.utils.parseaddr(fromAddr)[1]
+	# Get the from address
+	message = sys.stdin.read()
+	fromAddr = email.message_from_string(message)["from"]
+	_, fromAddr = email.utils.parseaddr(fromAddr)
 
-if smtpServer is None:
-	cmdline = ['ssh', 'kagami', '/usr/sbin/sendmail']
-	cmdline.extend(toAddrs)
-	process = subprocess.Popen(cmdline, stdin=subprocess.PIPE)
-	process.communicate(message)
-	sys.exit(process.wait())
-else:
-	# Send the email
-	smtp = smtplib.SMTP(smtpServer)
-	smtp.sendmail(fromAddr, toAddrs, message)
-	smtp.quit()
+	return smtpProxy.sendmail(fromAddr, toAddrs, message)
 
-sys.exit(1)
+if __name__ == "__main__":
+	# Specify SMTP servers here
+	sys.exit(not main())
