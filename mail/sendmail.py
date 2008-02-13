@@ -1,9 +1,17 @@
 #!/usr/bin/env python
 
-import decorators
+
 import smtplib, email, urllib
 import subprocess, sys, optparse
 import logging
+
+try:
+	# Attempt to load this debugging decorator function
+	from decorators import logCall
+except ImportError:
+	def logCall(f):
+		'''This is a no-op decorator function'''
+		return f
 
 #### USER CONFIG #####
 def getUserConfig():
@@ -34,7 +42,7 @@ class SMTPProxy(SMTPProxyBase):
 			'password',
 			'useSSL',
 		)
-	@decorators.logCall
+	@logCall
 	def __init__(self, remoteServer, domainSuffix, username=None, password=None, useSSL=False):
 		self.remoteServer = remoteServer
 		self.domainSuffix = domainSuffix
@@ -68,7 +76,7 @@ class SMTPProxy(SMTPProxyBase):
 
 class SMTPProxySSH(SMTPProxyBase):
 	__slots__ = ('remoteServer',)
-	@decorators.logCall
+	@logCall
 	def __init__(self, remoteServer):
 		self.remoteServer = remoteServer
 
@@ -124,7 +132,7 @@ def main():
 			logging.info('Using the Proxy %r to connect from %s', smtpProxy, host)
 			break
 	else:
-		logging.info('Did not find a proxy to conncet from %s', host)
+		logging.error('Did not find a proxy to connect from %s', host)
 		return False
 
 	# Get the from address
