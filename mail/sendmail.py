@@ -4,7 +4,6 @@ import decorators
 import smtplib, email, urllib
 import subprocess, sys, optparse
 import logging
-logging.basicConfig(level=logging.DEBUG)
 
 #### USER CONFIG #####
 def getUserConfig():
@@ -108,6 +107,7 @@ def main():
 	# Get the to addresses
 	parser = getOptionParser()
 	options, toAddrs = parser.parse_args()
+	logging.basicConfig(level=options.debugLevel)
 	if not toAddrs:
 		parser.error('No to addresses found')
 
