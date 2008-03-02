@@ -1,8 +1,30 @@
 #!/usr/bin/env python
 
+"""
+sendmailish python program.
+Usage: sendmail.py toaddress
+
+
+Sample config file
+------------------
+# vim:ft=python
+
+smtpServers = [
+	SMTPProxy(remoteServer='mail.internode.on.net', domainSuffix='.internode.on.net'),
+	SMTPProxy(remoteServer='smtp.usyd.edu.au', domainSuffix='.usyd.edu.au'),
+	SMTPProxy(remoteServer='mail.iinet.net.au', domainSuffix='.iinet.net.au'),
+	SMTPProxy(remoteServer='mail.netspace.net.au', domainSuffix='.netspace.net.au'),
+	SMTPProxy(remoteServer='mail.optusnet.com.au', domainSuffix='.optusnet.com.au'),
+	SMTPProxySSH(remoteServer='delx.net.au', remoteSendmail='/usr/sbin/sendmail'),
+]
+
+myIPURL = "http://suits.ug.it.usyd.edu.au/myip.php"
+"""
+
+
 
 import smtplib, email, urllib
-import subprocess, sys, optparse
+import os.path, subprocess, sys, optparse
 import logging
 
 try:
@@ -13,20 +35,6 @@ except ImportError:
 		'''This is a no-op decorator function'''
 		return f
 
-#### USER CONFIG #####
-def getUserConfig():
-	smtpServers = (
-			SMTPProxy(remoteServer='mail.internode.on.net', domainSuffix='.internode.on.net'),
-			SMTPProxy(remoteServer='smtp.usyd.edu.au', domainSuffix='.usyd.edu.au'),
-			SMTPProxy(remoteServer='mail.iinet.net.au', domainSuffix='.iinet.net.au'),
-			SMTPProxy(remoteServer='mail.netspace.net.au', domainSuffix='.netspace.net.au'),
-			SMTPProxy(remoteServer='mail.optusnet.com.au', domainSuffix='.optusnet.com.au'),
-			SMTPProxySSH(remoteServer='kagami.tsukasa.net.au', remoteSendmail='/usr/sbin/sendmail'),
-	)
-
-	return smtpServers
-
-#### REAL CODE STARTS HERE ####
 
 class SMTPProxyBase(object):
 	def __repr__(self):
@@ -113,6 +121,13 @@ def getOptionParser():
 	return parser
 
 def main():
+	# Load the config file
+	try:
+		exec(open(os.path.expanduser('~/.sendmailpyrc'), 'r').read())
+	except Exception, e:
+		print >>sys.stderr, 'Error with config file:', e
+		return False
+
 	# Get the to addresses
 	parser = getOptionParser()
 	options, toAddrs = parser.parse_args()
@@ -122,12 +137,12 @@ def main():
 
 	# Pick a SMTP server
 	try:
-		host = urllib.urlopen("http://suits.ug.it.usyd.edu.au/myip.php").read().strip()
+		host = urllib.urlopen(myIPURL).read().strip()
 	except:
 		host = None
 		logging.exception('Failed to grab our external domain name')
 
-	for smtpProxy in getUserConfig():
+	for smtpProxy in smtpServers:
 		if smtpProxy.doesHandle(host):
 			# Got the correct smtpServer
 			logging.info('Using the Proxy %r to connect from %s', smtpProxy, host)
@@ -146,3 +161,4 @@ def main():
 if __name__ == "__main__":
 	# Specify SMTP servers here
 	sys.exit(not main())
+
