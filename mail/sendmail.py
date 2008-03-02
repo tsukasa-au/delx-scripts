@@ -21,7 +21,7 @@ def getUserConfig():
 			SMTPProxy(remoteServer='mail.iinet.net.au', domainSuffix='.iinet.net.au'),
 			SMTPProxy(remoteServer='mail.netspace.net.au', domainSuffix='.netspace.net.au'),
 			SMTPProxy(remoteServer='mail.optusnet.com.au', domainSuffix='.optusnet.com.au'),
-			SMTPProxySSH(remoteServer='kagami.tsukasa.net.au'), # Fall back to sending the email via ssh if nothing else
+			SMTPProxySSH(remoteServer='kagami.tsukasa.net.au', remoteSendmail='/usr/sbin/sendmail'),
 	)
 
 	return smtpServers
@@ -77,8 +77,9 @@ class SMTPProxy(SMTPProxyBase):
 class SMTPProxySSH(SMTPProxyBase):
 	__slots__ = ('remoteServer',)
 	@logCall
-	def __init__(self, remoteServer):
+	def __init__(self, remoteServer, remoteSendmail):
 		self.remoteServer = remoteServer
+		self.remoteSendmail = remoteSendmail
 
 	def doesHandle(self, *args, **kwargs):
 		'''
@@ -93,7 +94,7 @@ class SMTPProxySSH(SMTPProxyBase):
 
 		Returns true if the mail was successfully send
 		'''
-		cmdline = ['ssh', self.remoteServer, '/usr/sbin/sendmail', '--']
+		cmdline = ['ssh', self.remoteServer, self.remoteSendmail, '--']
 		cmdline.extend(toAddrs)
 		process = subprocess.Popen(cmdline, stdin=subprocess.PIPE)
 		process.communicate(message)
