@@ -50,12 +50,33 @@ class PlaylistBuilder(object):
 			assert self.cursor.rowcount == 1, "More than one playlist with the same name?"
 			self.playlistId = self.cursor.fetchone()[0]
 		self.ids = []
+		self.addFile = self.addFileFirst
 
-	def addFile(self, filename):
+	def addFileNormal(self, filename):
+		filename = filename.split(os.path.sep, self.strip)[-1]
 		self.cursor.execute(self.findItemQuery, [filename])
 		if self.cursor.rowcount != 1:
 			logging.warning("Did not find an entry for '%s' (return=%d)" % (filename, self.cursor.rowcount))
 			return
+		self.ids.append("%d" % self.cursor.fetchone()[0])
+	
+	def addFileFirst(self, filename):
+		self.addFile = self.addFileNormal
+
+		# Pull off path components until we find it
+		self.strip = 0
+		while filename:
+			self.cursor.execute(self.findItemQuery, [filename])
+			if self.cursor.rowcount == 1:
+				break
+			filename = filename.split(os.path.sep, 1)[1]
+			self.strip += 1
+		else:
+			logging.warning("Did not find entry for first file in playlist: '%s' No autodetection of strip amount." % filename)
+			self.strip = 0
+			return
+
+		logging.info("Found file: '%s', auto detected strip amount: %d" % (filename, self.strip))
 		self.ids.append("%d" % self.cursor.fetchone()[0])
 
 	def finishPlaylist(self):
@@ -113,8 +134,6 @@ file if possible, otherwise specify them on the command line.
 			action="store", dest="password", default=vars["dbpassword"])
 	parser.add_option("--dbname", help="MythTV database name",
 			action="store", dest="database", default=vars["dbname"])
-	parser.add_option("--strip", help="Number of directories to strip from the start of each file in the playlists",
-			action="store", type="int", dest="stripn", default=0)
 	parser.add_option("-v", "--verbose", help="Be verbose",
 			action="store_true", dest="verbose")
 
@@ -123,7 +142,6 @@ file if possible, otherwise specify them on the command line.
 	vars["dbusername"] = options.user
 	vars["dbpassword"] = options.password
 	vars["dbname"] = options.database
-	vars["strip"] = options.stripn
 	if options.verbose:
 		logging.basicConfig(level=logging.INFO)
 	else:
@@ -152,7 +170,6 @@ def main():
 	if not found:
 		logging.warning("Could not read mysql.txt, try running as the mythtv user.")
 
-	strip = vars["strip"]
 	builder = PlaylistBuilder(vars["dbhostname"], vars["dbusername"], vars["dbpassword"], vars["dbname"])
 	for filename in filenames:
 		playlistName = os.path.basename(filename)
@@ -161,7 +178,7 @@ def main():
 
 		builder.startPlaylist(playlistName)
 		for line in stripComments(open(filename)):
-			line = line.split(os.path.sep, strip)[-1]
+			line = re.sub("^(\.\./)*", "", line)
 			builder.addFile(line)
 		builder.finishPlaylist()
 
