@@ -1,10 +1,14 @@
-CFLAGS     := -Wall -W $(CFLAGS)
-FRAMEWORKS := -std=c99 -framework Foundation -framework AddressBook
+CFLAGS     := -Wall -W -std=c99 $(CFLAGS)
+LDFLAGS    := $(LDFLAGS)
+FRAMEWORKS := -framework Foundation -framework AddressBook
+TARGETS    := ab2mutt
 
-ab2mutt: ab2mutt.m
-	$(CC) $< -o $@ $(CFLAGS) $(FRAMEWORKS)
+all: $(TARGETS)
+
+%: %.m
+	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(FRAMEWORKS) $<
 
 clean:
-	rm -f ab2mutt
+	rm -f $(TARGETS)
 
 .PHONY: clean
