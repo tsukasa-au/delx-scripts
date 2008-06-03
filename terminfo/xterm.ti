@@ -1,4 +1,4 @@
-#!/usr/bin/env tic -e xterm-new,xterm-color,xterm-debian,xterm,xterm-itermapp,xterm-itermapp-256color,xterm-simple
+#!/usr/bin/env tic -e xterm,xterm-color,xterm-simple,itermapp
 
 # How should you use these?
 # 
@@ -112,6 +112,10 @@ xterm+pcfkeys|fragment for PC-style keys,
 
 # This chunk is used for building the VT220/Sun/PC keyboard variants.
 xterm-basic|modern xterm terminal emulator - common,
+	hs,
+	tsl=\E]0;,
+	fsl=\007,
+	dsl=\E]0;\007,
 	am,
 	bce,
 	km,
@@ -163,7 +167,7 @@ xterm-basic|modern xterm terminal emulator - common,
 	ind=^J,
 	invis=\E[8m,
 	is2=\E[!p\E[?3;4l\E[4l\E>,
-	kbs=^H,
+	kbs=\177,
 	kdch1=\E[3~,
 	mc0=\E[i,
 	mc4=\E[4i,
@@ -203,21 +207,6 @@ xterm-basic|modern xterm terminal emulator - common,
 	u8=\E[?1;2c,
 	u9=\E[c,
 	vpa=\E[%i%p1%dd,
-
-
-# This should work for the commonly used "color xterm" variations (XFree86
-# xterm, color_xterm, nxterm, rxvt).  Note that it does not set 'bce', so for
-# XFree86 and and rxvt, some applications that use colors will be less
-# efficient, and in a few special cases (with "smart" optimization) the wrong
-# color will be painted in spots.
-xterm-color|generic "ANSI" color xterm (X Window System),
-	colors#8,
-	ncv@,
-	pairs#64,
-	op=\E[m,
-	setab=\E[4%p1%dm,
-	setaf=\E[3%p1%dm,
-	use=xterm-r6,
 
 
 # Compatible with the R6 xterm, with the following changes:
@@ -264,12 +253,12 @@ xterm-r6|xterm-old|xterm X11R6 version,
 	il1=\E[L,
 	ind=^J,
 	is2=\E[m\E[?7h\E[4l\E>\E7\E[r\E[?1;3;4;6l\E8,
-	kbs=^H,
+	kbs=\177,
 	kcub1=\EOD,
 	kcud1=\EOB,
 	kcuf1=\EOC,
 	kcuu1=\EOA,
-	kdch1=\177,
+	kdch1=\E[3~,
 	kend=\E[4~,
 	kf1=\E[11~,
 	kf10=\E[21~,
@@ -322,51 +311,44 @@ xterm-r6|xterm-old|xterm X11R6 version,
 	u8=\E[?1;2c,
 	u9=\E[c,
 
-# xterm-debian is identical to xterm-new except that it more strictly
-# conforms to DEC VT220 behavior in the case of the backspace key; this is
-# mandated by the Section 9.8 of the Debian Policy Manual.  Also see
-# <http://vt100.net/docs/vt220-rm/>.
-xterm-debian|Debian xterm (VT220-conformant backspace),
-	kbs=\177,
-	use=xterm-new,
+xterm-color|generic "ANSI" color xterm (X Window System),
+	colors#8,
+	ncv@,
+	pairs#64,
+	op=\E[m,
+	setab=\E[4%p1%dm,
+	setaf=\E[3%p1%dm,
+	use=xterm-r6,
 
-# This is the only entry which you should have to customize, since "xterm"
-# is widely used for a variety of incompatible terminal emulations including
-# color_xterm and rxvt.
 xterm|X11 terminal emulator,
-    use=xterm-debian,
-#   use=xterm-new,
-#   use=xterm-r6,
-
-
-# Entry for iTerm.app under Mac OS X. It doesn't behave quite like xterm
-xterm-itermapp|iTerm.app on OSX,
-	use=xterm-new,
-	kbs=\177,
-# back_tab unsupported, this makes Mutt work
-	cbt@,
-# Makes the secondary screen work properly, taken from xterm-r6
-	smcup=\E7\E[?47h,
-	rmcup=\E[2J\E[?47l\E8,
-
-# iTerm.app with 256 colours.
-xterm-itermapp-256color|iTerm.app on OSX with 256 colors,
-	use=xterm-itermapp,
-# 256 colours are supported. This section taken from xterm-256color
-	ccc,
-	colors#256,
-	pairs#32767,
-	initc=\E]4;%p1%d;rgb\:%p2%{255}%*%{1000}%/%2.2X/%p3%{255}%*%{1000}%/%2.2X/%p4%{255}%*%{1000}%/%2.2X\E\\,
-	setab=\E[48;5;%p1%dm,
-	setaf=\E[38;5;%p1%dm,
-	setb=\E[48;5;%p1%dm,
-	setf=\E[38;5;%p1%dm,
+    use=xterm-new,
 
 # This entry is based on xterm-color which is based on xterm-r6. It has with
 # the newer keys from xterm-new.
 xterm-simple|iTerm.app on OSX - simple version,
 	use=xterm-color,
 	use=xterm+pcfkeys,
-	kbs=\177,
-	kdch1=\E[3~,
+
+# Entry for iTerm.app under Mac OS X. It doesn't behave quite like xterm
+itermapp|iTerm.app on OSX,
+	use=xterm-new,
+# 256 colours are supported
+	ccc,
+	colors#256,
+	pairs#32767,
+	initc=\E]4;%p1%d;rgb\:%p2%{255}%*%{1000}%/%2.2X/%p3%{255}%*%{1000}%/%2.2X/%p4%{255}%*%{1000}%/%2.2X\E\\,
+	setab=\E[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m,
+	setaf=\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m,
+	setb@, setf@,
+# Use supported init/reset strings
+	is2=\E[m\E[?7h\E[4l\E>\E7\E[r\E[?1;3;4;6l\E8,
+	rs1@,
+	rs2=\E[m\E[?7h\E[4l\E>\E7\E[r\E[?1;3;4;6l\E8,
+# move_standout_mode breaks Vim, but is need for offlineimap in screen :\
+###	msgr@,
+# back_tab unsupported, this makes Mutt work
+	cbt@,
+# Makes the secondary screen work properly, taken from xterm-r6
+	smcup=\E7\E[?47h,
+	rmcup=\E[2J\E[?47l\E8,
 
