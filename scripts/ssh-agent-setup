@@ -4,7 +4,7 @@ source ~/.ssh_agent_env
 
 # If the agent is running then exit without doing anything
 if [ -n "${SSH_AGENT_PID}" ]; then
-	if ps -o pid= -p "${SSH_AGENT_PID}" | grep -q "${SSH_AGENT_PID}"; then
+	if ps -o pid=,command= -p "${SSH_AGENT_PID}" | grep -q "${SSH_AGENT_PID} ssh-agent"; then
 		exit 0
 	fi
 fi
