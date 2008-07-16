@@ -1,4 +1,4 @@
 #!/bin/sh
 
-ps -o pid=,command= | grep "$1" | awk '{print $1;}' | grep -v $$
+ps -A -o pid=,command= | grep "$1" | awk '{print $1;}' | grep -v $$
 
