@@ -2,7 +2,9 @@
 
 import random, string, sys
 
-chars = filter(lambda x: not x.isspace(), string.printable)
+chars = filter(lambda c: c.isalnum(), string.printable)
+chars += "!@#%^&*(){}[]/=?+_-;:,.<>"
+
 def generate(length):
 	return "".join([random.choice(chars) for i in xrange(length)])
 
