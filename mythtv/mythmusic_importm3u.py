@@ -176,9 +176,12 @@ def main():
 		playlistName = playlistName.rsplit(".", 1)[0]
 		logging.info("Processing '%s' as playlist '%s'" % (filename, playlistName))
 
+		baseDir = os.path.dirname(filename)
 		builder.startPlaylist(playlistName)
 		for line in stripComments(open(filename)):
 			line = re.sub("^(\.\./)*", "", line)
+			if not line.startswith("/"):
+				line = os.path.abspath(os.path.join(baseDir, line))
 			builder.addFile(line)
 		builder.finishPlaylist()
 
