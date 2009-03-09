@@ -58,7 +58,7 @@ class Forwarder(asyncore.dispatcher):
 		self.listen(5)
 	
 	def handle_error(self):
-		print >>sys.stderr, "Connection error!"
+		print >>sys.stderr, "Connection error!", sys.exc_info()
 	
 	def handle_accept(self):
 		client_connection, (addr, port) = self.accept()
@@ -67,7 +67,7 @@ class Forwarder(asyncore.dispatcher):
 			client_connection.close()
 			return
 
-		print >>sys.stderr, "Accepted connection from", addr
+		print >>sys.stderr, "Accepted connection from", addr, port
 		server_connection = socket.socket()
 		server_connection.connect((self.host, self.port))
 
@@ -99,7 +99,7 @@ if __name__ == "__main__":
 		host = c.get("proxy", "host")
 		port = c.getint("proxy", "port")
 		allowed = c.items("allowed")
-		allowed = [host for _,host in c.items("allowed")]
+		allowed = [h for _,h in c.items("allowed")]
 	except:
 		print >>sys.stderr, "Error parsing config!"
 		sys.exit(1)
