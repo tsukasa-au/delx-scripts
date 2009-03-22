@@ -88,7 +88,7 @@ if __name__ == "__main__":
 		else:
 			daemon = False
 			config = sys.argv[1]
-	except ValueError:
+	except (IndexError, ValueError):
 		print >>sys.stderr, "Usage: %s [-d] config" % sys.argv[0]
 		sys.exit(1)
 
