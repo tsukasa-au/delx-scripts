@@ -216,13 +216,13 @@ class BasicForwarder(asyncore.dispatcher):
 		print >>sys.stderr, "BasicForwarder error:", sys.exc_info()
 
 	def handle_accept(self):
-		client_connection, (addr, port) = self.accept()
-		if addr not in map(socket.gethostbyname, self.allowed):
-			print >>sys.stderr, "Rejected connection from", addr
+		client_connection, source_addr = self.accept()
+		if source_addr[0] not in map(socket.gethostbyname, self.allowed):
+			print >>sys.stderr, "Rejected connection from", source_addr
 			client_connection.close()
 			return
 
-		print >>sys.stderr, "Accepted connection from", addr, port
+		print >>sys.stderr, "Accepted connection from", source_addr
 		server_connection = socket.socket()
 		server_connection.connect((self.host, self.port))
 
@@ -243,13 +243,13 @@ class Forwarder(asyncore.dispatcher):
 		print >>sys.stderr, "Forwarder error:", sys.exc_info()
 
 	def handle_accept(self):
-		client_connection, (addr, port) = self.accept()
-		if addr not in map(socket.gethostbyname, self.allowed):
-			print >>sys.stderr, "Rejected connection from", addr
+		client_connection, source_addr = self.accept()
+		if source_addr[0] not in map(socket.gethostbyname, self.allowed):
+			print >>sys.stderr, "Rejected connection from", source_addr
 			client_connection.close()
 			return
 
-		print >>sys.stderr, "Accepted connection from", addr, port
+		print >>sys.stderr, "Accepted connection from", source_addr
 		ConnectProxy(client_connection)
 
 class Interceptor(asyncore.dispatcher):
@@ -266,9 +266,9 @@ class Interceptor(asyncore.dispatcher):
 
 	def handle_accept(self):
 		# Get sockets
-		client_connection, addr = self.accept()
+		client_connection, source_addr = self.accept()
 		dest = get_original_dest(client_connection)
-		print >>sys.stderr, "Accepted connection from", addr, port
+		print >>sys.stderr, "Accepted connection from", source_addr
 		server_connection = socket.socket()
 		server_connection.connect((self.host, self.port))
 
