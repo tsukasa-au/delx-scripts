@@ -357,7 +357,7 @@ if __name__ == "__main__":
 		if os.fork() == 0:
 			# We are the child
 			try:
-				sys.exit(main(listen_port, host, port, allowed))
+				sys.exit(main(listen_port, host, port, mode, allowed))
 			except KeyboardInterrupt:
 				print
 			sys.exit(0)
