@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+
+import itertools
+import subprocess
+import re
+import sys
+
+# Run ioreg to get the battery status line
+classes = ["AppleSmartBattery", "IOBatteryInfo"]
+cmd = ["ioreg", "-w0", "-r", "-c"]
+iterables = []
+for klass in classes:
+	p = subprocess.Popen(args=cmd + [klass], stdout=subprocess.PIPE)
+	iterables.append(p.stdout)
+
+lines = []
+for line in itertools.chain(*iterables):
+	if line.startswith("+"):
+		continue
+	line = line.strip()
+	if line.find("=") >= 0:
+		line = line.replace("Yes", "True").replace("No", "False")
+		line = line.replace("=", ":")
+		if line.find("<") >= 0:
+			line = line.replace("<", "'<").replace(">", ">'")
+		line += ","
+	lines.append(line)
+exec "data = " + "\n".join(lines)
+
+
+fields = [
+	"Current",
+	"Capacity",
+	"Capacity%",
+	"Cycle Count",
+
+	"CurrentCapacity",
+	"MaxCapacity",
+	"DesignCapacity",
+	"CycleCount",
+	"DesignCycleCount",
+]
+for field in fields:
+	if data.has_key(field):
+		print (field+":").ljust(3+max(map(len, fields))),
+		print data[field]
+
+
