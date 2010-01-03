@@ -65,7 +65,7 @@ class VirginMobile
 	def request_bill_preview
 		res = do_request("/selfcare/dispatch/PostPayUnbilledUsage")
 		usage = res.body.scan(/\$([\d\.]*)/).flatten
-		last_bill_date = res.body.gsub(/\n/, '').scan(/Last bill date:.*(\d\d?\/\d\d?\/\d\d\d\d)/).flatten
+		last_bill_date = res.body.gsub(/\n/, '').scan(/Last bill date:.*>(\d\d?\/\d\d?\/\d\d\d\d)/).flatten
 		return usage, last_bill_date
 	end
 
