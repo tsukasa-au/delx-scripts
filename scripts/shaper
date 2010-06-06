@@ -1,21 +1,31 @@
 #!/bin/bash
 
+# Docs: http://lartc.org/howto
+
 # Tweakables
 IFACE="ppp0"
 VOIP_HOST="203.2.134.1"
 
-UPLINK_RATE=192
-DOWNLINK_RATE=1024
+UPLINK_RATE=900
 R2Q=2
 
-VOIP_RATE=64
-HIGH_RATE=32
-NORM_RATE=64
-BULK_RATE=32
+VOIP_RATE=70
+HIGH_RATE=230
+NORM_RATE=350
+BULK_RATE=250
+
+
+# Symbolic 'constants'
+ROOT=1
+LIMIT=1
+VOIP_TRAFFIC=10
+HIGH_TRAFFIC=20
+NORM_TRAFFIC=30
+BULK_TRAFFIC=40
 
 
 
-cd /
+
 
 # Print status of classes
 if [ "$1" = "status" ]
@@ -35,16 +45,7 @@ then
 	exit
 fi
 
-
-# Symbolic 'constants'
-ROOT=1
-LIMIT=1
-VOIP_TRAFFIC=10
-HIGH_TRAFFIC=20
-NORM_TRAFFIC=30
-BULK_TRAFFIC=40
-
-
+cd /
 
 ########## uplink #############
 
@@ -106,6 +107,15 @@ tc filter add dev ${IFACE} \
 	parent ${ROOT}:0 protocol ip prio 10 u32 \
 	match ip protocol 1 0xff flowid ${ROOT}:${HIGH_TRAFFIC}
 
+# To speed up downloads while an upload is going on, ACK is HIGH_TRAFFIC
+tc filter add dev ${IFACE} \
+	parent ${ROOT}:0 protocol ip prio 10 u32 \
+	match ip protocol 6 0xff \
+	match u8 0x05 0x0f at 0 \
+	match u16 0x0000 0xffc0 at 2 \
+	match u8 0x10 0xff at 33 \
+	flowid ${ROOT}:${HIGH_TRAFFIC}
+
 # TOS Minimum-Delay (eg ssh but not scp) in HIGH_TRAFFIC
 tc filter add dev ${IFACE} \
 	parent ${ROOT}:0 protocol ip prio 10 u32 \
@@ -116,31 +126,4 @@ tc filter add dev ${IFACE} \
 	parent ${ROOT}:0 protocol ip prio 10 u32 \
 	match ip tos 0x08 0xff flowid ${ROOT}:${BULK_TRAFFIC}
 
-# To speed up downloads while an upload is going on, ACK is HIGH_TRAFFIC
-tc filter add dev ${IFACE} \
-	parent ${ROOT}:0 protocol ip prio 10 u32 \
-	match ip protocol 6 0xff \
-	match u8 0x05 0x0f at 0 \
-	match u16 0x0000 0xffc0 at 2 \
-	match u8 0x10 0xff at 33 \
-	flowid ${ROOT}:${HIGH_TRAFFIC}
-
-
-
-########## downlink #############
-
-tc qdisc add dev ${IFACE} \
-	handle ffff: ingress
-
-# Matching incoming VoIP traffic here so it isn't policed by the next rule
-tc filter add dev ${IFACE} \
-	parent ffff: protocol ip prio 1 u32 \
-	match ip src ${VOIP_HOST}/32 \
-	flowid :1
-
-# Police everything else - drop packets coming in faster than DOWNLINK_RATE
-tc filter add dev ${IFACE} \
-	parent ffff: protocol ip prio 2 u32 \
-	match ip src 0.0.0.0/0 \
-	police rate ${DOWNLINK_RATE}Kbit burst 10k drop flowid :2
 
