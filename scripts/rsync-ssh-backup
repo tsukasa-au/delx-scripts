@@ -1,0 +1,32 @@
+#!/bin/sh
+
+case "$SSH_ORIGINAL_COMMAND" in
+*\&*)
+echo "Rejected" >&2
+;;
+*\(*)
+echo "Rejected" >&2
+;;
+*\{*)
+echo "Rejected" >&2
+;;
+*\;*)
+echo "Rejected" >&2
+;;
+*\<*)
+echo "Rejected" >&2
+;;
+*\`*)
+echo "Rejected" >&2
+;;
+*\|*)
+echo "Rejected" >&2
+;;
+rsync\ --server*)
+ionice -c3 nice -n5 $SSH_ORIGINAL_COMMAND
+;;
+*)
+echo "Rejected" >&2
+;;
+esac
+
