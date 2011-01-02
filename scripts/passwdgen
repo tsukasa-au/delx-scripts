@@ -2,7 +2,8 @@
 
 import random, string, sys
 
-chars = filter(lambda c: c.isalnum(), string.printable)
+chars = filter(lambda c: c.isalnum(), map(chr, range(256)))
+chars = chars * 2
 chars += "!@#%^&*(){}[]/=?+_-;:,.<>"
 
 def generate(length):
