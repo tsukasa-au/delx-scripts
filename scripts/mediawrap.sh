@@ -1,7 +1,18 @@
 #!/bin/bash
 
+PIDFILE="$HOME/.mediawrap.pid"
 PULSESTATE="$HOME/.pulseaudio.state"
 KEYPATH="/apps/gnome_settings_daemon/keybindings"
+
+while true; do
+	if [ ! -r "$PIDFILE" ]; then
+		break
+	fi
+	if [ "$(ps -o cmd= -p "$(cat "$PIDFILE")" | wc -l)" -eq 0 ]; then
+		break
+	fi
+	sleep 0.5
+done
 
 # Disable volume keys
 gconftool --set --type string "$KEYPATH/volume_up" ''
@@ -26,4 +37,6 @@ cat "$PULSESTATE" | pacmd > /dev/null
 gconftool --set --type string "$KEYPATH/volume_up" 'XF86AudioRaiseVolume'
 gconftool --set --type string "$KEYPATH/volume_down" 'XF86AudioLowerVolume'
 gconftool --set --type string "$KEYPATH/volume_mute" 'XF86AudioMute'
+
+rm -f "$PIDFILE"
 
