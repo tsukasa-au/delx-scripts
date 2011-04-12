@@ -10,6 +10,7 @@ for i in $(seq 6); do
 		break
 	fi
 	if [ "$(ps -o cmd= -p "$(cat "$PIDFILE")" | wc -l)" -eq 0 ]; then
+		rm -f "$PIDFILE"
 		break
 	fi
 	sleep 0.5
