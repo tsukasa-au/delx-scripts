@@ -99,13 +99,7 @@ def print_stream_file(video_url):
 	data = urllib.urlopen(video_url)
 	httpinfo = data.info()
 	sys.stdout.write("Content-Length: %s\r\n" % httpinfo.getheader("Content-Length"))
-	block = 32768
-	while True:
-		data = p.stdout.read(block)
-		if len(data) > 0:
-			sys.stdout.write(data)
-		else:
-			break
+	shutil.copyfileobj(data, sys.stdout)
 	data.close()
 
 
