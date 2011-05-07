@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 while [ "$1" != "" ]; do
 	dosunix "$1" /tmp/outfile
