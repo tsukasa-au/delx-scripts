@@ -92,17 +92,6 @@ def get_video_url(doc):
 
 	return video_url, filename
 
-def print_filename_header(filename):
-	sys.stdout.write("Content-Disposition: attachment; filename=\"%s\"\r\n" % filename)
-
-def print_stream_file(video_url):
-	data = urllib.urlopen(video_url)
-	httpinfo = data.info()
-	sys.stdout.write("Content-Length: %s\r\n" % httpinfo.getheader("Content-Length"))
-	shutil.copyfileobj(data, sys.stdout)
-	data.close()
-
-
 def cgimain():
 	args = cgi.parse()
 	try:
@@ -114,8 +103,13 @@ def cgimain():
 	try:
 		doc = parse_url(url)
 		video_url, filename = get_video_url(doc)
-		print_filename_header(filename)
-		print_stream_file(video_url)
+		data = urllib.urlopen(video_url)
+		httpinfo = data.info()
+		sys.stdout.write("Content-Disposition: attachment; filename=\"%s\"\r\n" % filename)
+		sys.stdout.write("Content-Length: %s\r\n" % httpinfo.getheader("Content-Length"))
+		sys.stdout.write("\r\n")
+		shutil.copyfileobj(data, sys.stdout)
+		data.close()
 	except Exception, e:
 		print_form(
 			url=url,
