@@ -14,18 +14,24 @@ def grab_xml(path):
 	f.close()
 	return doc
 
-def choose(options):
+def choose(options, allow_multi):
 	skeys = sorted(options.keys())
 	for i, key in enumerate(skeys):
 		print " %d) %s" % (i+1, key)
 	print " 0) Back"
 	while True:
 		try:
-			value = int(raw_input("Choose> "))
-			if value == 0:
+			values = map(int, raw_input("Choose> ").split())
+			if len(values) == 0:
+				continue
+			if 0 in values:
 				return
-			if value > 0 and value <= len(skeys):
-				return options[skeys[value-1]]
+			values = [options[skeys[value-1]] for value in values]
+			if allow_multi:
+				return values
+			else:
+				if len(values) == 1:
+					return values[0]
 		except ValueError:
 			pass
 
@@ -95,15 +101,16 @@ def download_video((title, video_desc_url)):
 def main():
 	while True:
 		menu_list = get_menu_list()
-		playlist_url = choose(menu_list)
+		playlist_url = choose(menu_list, allow_multi=False)
 		if playlist_url is None:
 			continue
 		video_list = get_video_list(playlist_url)
 		while True:
-			video_desc_url = choose(video_list)
-			if video_desc_url is None:
+			generator = choose(video_list, allow_multi=True)
+			if generator is None:
 				break
-			download_video(video_desc_url)
+			for video_desc_url in generator:
+				download_video(video_desc_url)
 
 if __name__ == "__main__":
 	main()
