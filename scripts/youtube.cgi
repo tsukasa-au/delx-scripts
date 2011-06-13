@@ -10,6 +10,9 @@ import sys
 import urllib
 
 
+class VideoUnavailable(Exception):
+	pass
+
 urllib.URLopener.version = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.6; rv:2.0.1) Gecko/20100101 Firefox/4.0.1"
 
 fmt_quality = [
@@ -67,6 +70,9 @@ def parse_url(url):
 	return doc
 
 def get_video_url(doc):
+	unavailable = doc.xpath("//div[@id='unavailable-message']/text()")
+	if unavailable:
+		raise VideoUnavailable(unavailable[0].strip())
 	embed = doc.xpath("//embed")[0]
 	flashvars = embed.attrib["flashvars"]
 	flashvars = cgi.parse_qs(flashvars)
@@ -110,6 +116,11 @@ def cgimain():
 		sys.stdout.write("\r\n")
 		shutil.copyfileobj(data, sys.stdout)
 		data.close()
+	except VideoUnavailable, e:
+		print_form(
+			url=url,
+			msg="<p class='error'>Sorry, there was an error: %s</p>" % e.message
+		)
 	except Exception, e:
 		print_form(
 			url=url,
