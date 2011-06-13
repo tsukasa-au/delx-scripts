@@ -30,6 +30,7 @@ fmt_quality = [
 
 
 def print_form(url="", msg=""):
+	script_url = "http://%s%s" % (os.environ["HTTP_HOST"], os.environ["REQUEST_URI"])
 	print "Content-Type: application/xhtml+xml\r\n\r\n"
 	print """
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
@@ -55,13 +56,13 @@ def print_form(url="", msg=""):
 	<div><input type="text" name="url" value="{1}"/></div>
 	<div><input type="submit" value="Download!"/></div>
 	</form>
-	<p>Tip! Use this bookmarklet: <a href="javascript:(function(){window.location='http://delx.net.au/utils/youtube.cgi?url='+escape(location);})()">YouTube Download</a>
+	<p>Tip! Use this bookmarklet: <a href="javascript:(function(){window.location='{2}?url='+escape(location);})()">YouTube Download</a>
 	to easily download videos. Right-click the link and add it to bookmarks,
 	then when you're looking at a YouTube page select that bookmark from your
 	browser's bookmarks menu to download the video straight away.</p>
 </body>
 </html>
-""".replace("{0}", msg).replace("{1}", url)
+""".replace("{0}", msg).replace("{1}", url).replace("{2}", script_url)
 
 def parse_url(url):
 	f = urllib.urlopen(url)
