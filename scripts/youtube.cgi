@@ -120,7 +120,7 @@ def cgimain():
 	except VideoUnavailable, e:
 		print_form(
 			url=url,
-			msg="<p class='error'>Sorry, there was an error: %s</p>" % e.message
+			msg="<p class='error'>Sorry, there was an error: %s</p>" % cgi.escape(e.message)
 		)
 	except Exception, e:
 		print_form(
