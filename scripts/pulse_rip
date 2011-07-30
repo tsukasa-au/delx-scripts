@@ -9,5 +9,5 @@ echo "Recording now!"
 
 src="$(pactl list | grep -A2 '^Source #' | grep 'Name: .*\.monitor$' | awk '{print $NF}' | tail -n1)"
 parec -d "$src" --rate=44100 --format=s16le --channels=1 "$1".raw
-sox -r 44100 -b 16 -L -c 1 "$1".raw "$1".wav
+sox -e 'signed-integer' -r 44100 -b 16 -L -c 1 "$1".raw "$1".wav
 
