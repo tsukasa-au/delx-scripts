@@ -1,0 +1,13 @@
+#!/bin/bash -e
+echo -n "Will record in... "
+for i in 5 4 3 2 1; do
+	echo -n "$i "
+	sleep 1
+done
+echo
+echo "Recording now!"
+
+src="$(pactl list | grep -A2 '^Source #' | grep 'Name: .*\.monitor$' | awk '{print $NF}' | tail -n1)"
+parec -d "$src" --rate=44100 --format=s16le --channels=1 "$1".raw
+sox -r 44100 -b 16 -L -c 1 "$1".raw "$1".wav
+
