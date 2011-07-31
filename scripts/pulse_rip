@@ -8,6 +8,8 @@ echo
 echo "Recording now!"
 
 src="$(pactl list | grep -A2 '^Source #' | grep 'Name: .*\.monitor$' | awk '{print $NF}' | tail -n1)"
-parec -d "$src" --rate=44100 --format=s16le --channels=1 "$1".raw
-sox -e 'signed-integer' -r 44100 -b 16 -L -c 1 "$1".raw "$1".wav
+dest="$1"
+shift
+parec -d "$src" --rate=44100 --format=s16le --channels=1 /dev/stdout | \
+	lame -r -s '44.1' --signed --bitwidth 16 --little-endian -m m "$@" /dev/stdin "$dest"
 
