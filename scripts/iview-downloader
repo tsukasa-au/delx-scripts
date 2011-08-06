@@ -85,7 +85,7 @@ def get_categories():
 		categories[name] = cid
 	return categories
 
-def get_series(cid):
+def get_episodes(cid):
 	series_list_doc = grab_json(PARAMS["api"] + "seriesIndex")
 	episode_list = {}
 	for series in series_list_doc:
@@ -115,15 +115,11 @@ def main():
 		if cid is None:
 			continue
 		while True:
-			sid = choose(get_series(cid), allow_multi=False)
-			if sid is None:
+			generator = choose(get_episodes(cid), allow_multi=True)
+			if generator is None:
 				break
-			while True:
-				generator = choose(get_episodes(sid), allow_multi=True)
-				if generator is None:
-					break
-				for title, vpath in generator:
-					download_video(title, vpath)
+			for title, vpath in generator:
+				download_video(title, vpath)
 
 if __name__ == "__main__":
 	try:
