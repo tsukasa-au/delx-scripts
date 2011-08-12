@@ -19,8 +19,8 @@ fmt_quality = [
 	(38, ".mp4"),  # 4096x3072
 	(37, ".mp4"),  # 1920x1080
 	(22, ".mp4"),  # 1280x720
-	(45, ".webm"), # 1280x720
-	(43, ".webm"), # 640x360
+###	(45, ".webm"), # 1280x720
+###	(43, ".webm"), # 640x360
 	(35, ".flv"),  # 854x480
 	(34, ".flv"),  # 640x360
 	(18, ".mp4"),  # 480x360
@@ -78,10 +78,10 @@ def get_video_url(doc):
 	flashvars = embed.attrib["flashvars"]
 	flashvars = cgi.parse_qs(flashvars)
 	fmt_url_map = {}
-	for pair in flashvars["fmt_url_map"][0].split(","):
-		key, value = pair.split("|")
-		key = int(key)
-		fmt_url_map[key] = value
+	for url_desc in flashvars["url_encoded_fmt_stream_map"][0].split(","):
+		url_desc_map = cgi.parse_qs(url_desc)
+		key = int(url_desc_map["itag"][0])
+		fmt_url_map[key] = url_desc_map["url"][0]
 	for fmt, extension in fmt_quality:
 		try:
 			video_url = fmt_url_map[fmt]
