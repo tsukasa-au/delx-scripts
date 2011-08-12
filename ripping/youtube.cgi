@@ -89,7 +89,7 @@ def get_video_url(doc):
 		except KeyError:
 			continue
 	else:
-		return None, None, None
+		return None, None
 
 	title = doc.xpath("/html/head/title/text()")[0]
 	title = re.sub("\s+", " ", title.strip())
