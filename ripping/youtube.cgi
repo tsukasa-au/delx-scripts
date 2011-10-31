@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import cookielib
 import cgi
 from lxml.html import document_fromstring
 import os
@@ -7,13 +8,10 @@ import re
 import shutil
 import subprocess
 import sys
-import urllib
+import urllib2
 
 
-class VideoUnavailable(Exception):
-	pass
-
-urllib.URLopener.version = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.6; rv:2.0.1) Gecko/20100101 Firefox/4.0.1"
+USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:7.0.1) Gecko/20100101 Firefox/7.0.1"
 
 fmt_quality = [
 	(38, ".mp4"),  # 4096x3072
@@ -28,6 +26,9 @@ fmt_quality = [
 	(17, ".3gp"),  # 176x144
 ]
 
+
+class VideoUnavailable(Exception):
+	pass
 
 def print_form(url="", msg=""):
 	script_url = "http://%s%s" % (os.environ["HTTP_HOST"], os.environ["REQUEST_URI"])
@@ -64,8 +65,19 @@ def print_form(url="", msg=""):
 </html>
 """.replace("{0}", msg).replace("{1}", url).replace("{2}", script_url)
 
+urlopener = urllib2.build_opener(urllib2.HTTPCookieProcessor())
+urlopener.addheaders = [("User-agent", USER_AGENT)]
+referrer = ""
+
+def urlopen(url):
+	global referrer
+	req = urllib2.Request(url)
+	req.add_header("Referer", referrer)
+	referrer = url
+	return urlopener.open(req)
+
 def parse_url(url):
-	f = urllib.urlopen(url)
+	f = urlopen(url)
 	doc = document_fromstring(f.read())
 	f.close()
 	return doc
@@ -89,7 +101,7 @@ def get_video_url(doc):
 		except KeyError:
 			continue
 	else:
-		return None, None
+		return None, None, None
 
 	title = doc.xpath("/html/head/title/text()")[0]
 	title = re.sub("\s+", " ", title.strip())
@@ -110,7 +122,7 @@ def cgimain():
 	try:
 		doc = parse_url(url)
 		video_url, filename = get_video_url(doc)
-		data = urllib.urlopen(video_url)
+		data = urlopen(video_url)
 		httpinfo = data.info()
 		sys.stdout.write("Content-Disposition: attachment; filename=\"%s\"\r\n" % filename)
 		sys.stdout.write("Content-Length: %s\r\n" % httpinfo.getheader("Content-Length"))
@@ -137,7 +149,7 @@ def main():
 		sys.exit(1)
 	doc = parse_url(url)
 	video_url, filename = get_video_url(doc)
-	data = urllib.urlopen(video_url)
+	data = urlopen(video_url)
 	outfile = open(filename, "w")
 	shutil.copyfileobj(data, outfile)
 	data.close()
