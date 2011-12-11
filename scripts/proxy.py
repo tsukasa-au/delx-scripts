@@ -209,8 +209,9 @@ class BasicForwarder(asyncore.dispatcher):
 		self.port = port
 		self.allowed = allowed
 		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.set_reuse_addr()
 		self.bind(("", listen_port))
-		self.listen(5)
+		self.listen(50)
 
 	def handle_error(self):
 		print >>sys.stderr, "BasicForwarder error:", sys.exc_info()
@@ -236,8 +237,9 @@ class Forwarder(asyncore.dispatcher):
 		asyncore.dispatcher.__init__(self)
 		self.allowed = allowed
 		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.set_reuse_addr()
 		self.bind(("", listen_port))
-		self.listen(5)
+		self.listen(50)
 
 	def handle_error(self):
 		print >>sys.stderr, "Forwarder error:", sys.exc_info()
@@ -258,8 +260,9 @@ class Interceptor(asyncore.dispatcher):
 		self.host = host
 		self.port = port
 		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.set_reuse_addr()
 		self.bind(("0.0.0.0", listen_port))
-		self.listen(5)
+		self.listen(50)
 
 	def handle_error(self):
 		print >>sys.stderr, "Interceptor error!", sys.exc_info()
