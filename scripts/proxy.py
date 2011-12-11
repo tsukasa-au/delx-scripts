@@ -84,6 +84,7 @@ import os
 import socket
 import struct
 import sys
+import traceback
 
 
 if sys.platform == "linux2":
@@ -122,8 +123,13 @@ elif sys.platform == "darwin":
 
 
 class Proxy(asyncore.dispatcher):
-	def __init__(self, sock):
-		asyncore.dispatcher.__init__(self, sock)
+	def __init__(self, arg):
+		if isinstance(arg, tuple):
+			asyncore.dispatcher.__init__(self)
+			self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+			self.connect(arg)
+		else:
+			asyncore.dispatcher.__init__(self, arg)
 		self.other = None
 		self.buffer = ""
 
@@ -132,7 +138,7 @@ class Proxy(asyncore.dispatcher):
 		other.other = self
 
 	def handle_error(self):
-		print >>sys.stderr, "Proxy error:", sys.exc_info()
+		print >>sys.stderr, "Proxy error:", traceback.format_exc()
 		self.handle_close()
 
 	def handle_read(self):
@@ -161,7 +167,7 @@ class ConnectProxy(asyncore.dispatcher):
 		self.buffer = ""
 
 	def handle_error(self):
-		print >>sys.stderr, "ConnectProxy error:", sys.exc_info()
+		print >>sys.stderr, "ConnectProxy error:", traceback.format_exc()
 		self.handle_close()
 
 	def handle_read(self):
@@ -191,9 +197,7 @@ class ConnectProxy(asyncore.dispatcher):
 		print >>sys.stderr, "Forwarding connection", host, port
 
 		# Create server proxy
-		server_connection = socket.socket()
-		server_connection.connect((host, port))
-		server = Proxy(server_connection)
+		server = Proxy((host, port))
 
 		# Morph and connect
 		self.__class__ = Proxy
@@ -212,9 +216,10 @@ class BasicForwarder(asyncore.dispatcher):
 		self.set_reuse_addr()
 		self.bind(("", listen_port))
 		self.listen(50)
+		print >>sys.stderr, "BasicForwarder bound on", listen_port
 
 	def handle_error(self):
-		print >>sys.stderr, "BasicForwarder error:", sys.exc_info()
+		print >>sys.stderr, "BasicForwarder error:", traceback.format_exc()
 
 	def handle_accept(self):
 		client_connection, source_addr = self.accept()
@@ -224,12 +229,10 @@ class BasicForwarder(asyncore.dispatcher):
 			return
 
 		print >>sys.stderr, "Accepted connection from", source_addr
-		server_connection = socket.socket()
-		server_connection.connect((self.host, self.port))
 
 		# Hook the sockets up to the event loop
 		client = Proxy(client_connection)
-		server = Proxy(server_connection)
+		server = Proxy((self.host, self.port))
 		server.meet(client)
 
 class Forwarder(asyncore.dispatcher):
@@ -240,9 +243,10 @@ class Forwarder(asyncore.dispatcher):
 		self.set_reuse_addr()
 		self.bind(("", listen_port))
 		self.listen(50)
+		print >>sys.stderr, "Forwarder bound on", listen_port
 
 	def handle_error(self):
-		print >>sys.stderr, "Forwarder error:", sys.exc_info()
+		print >>sys.stderr, "Forwarder error:", traceback.format_exc()
 
 	def handle_accept(self):
 		client_connection, source_addr = self.accept()
@@ -263,21 +267,20 @@ class Interceptor(asyncore.dispatcher):
 		self.set_reuse_addr()
 		self.bind(("0.0.0.0", listen_port))
 		self.listen(50)
+		print >>sys.stderr, "Interceptor bound on", listen_port
 
 	def handle_error(self):
-		print >>sys.stderr, "Interceptor error!", sys.exc_info()
+		print >>sys.stderr, "Interceptor error!", traceback.format_exc()
 
 	def handle_accept(self):
 		# Get sockets
 		client_connection, source_addr = self.accept()
 		dest = get_original_dest(client_connection)
 		print >>sys.stderr, "Accepted connection from", source_addr
-		server_connection = socket.socket()
-		server_connection.connect((self.host, self.port))
 
 		# Hook them up to the event loop
 		client = Proxy(client_connection)
-		server = Proxy(server_connection)
+		server = Proxy((self.host, self.port))
 		server.buffer += "%s\n%d\n" % dest
 		server.meet(client)
 
