@@ -130,6 +130,10 @@ class Proxy(asyncore.dispatcher):
 			self.connect(arg)
 		else:
 			asyncore.dispatcher.__init__(self, arg)
+		self.init()
+
+	def init(self):
+		self.end = False
 		self.other = None
 		self.buffer = ""
 
@@ -139,7 +143,7 @@ class Proxy(asyncore.dispatcher):
 
 	def handle_error(self):
 		print >>sys.stderr, "Proxy error:", traceback.format_exc()
-		self.handle_close()
+		self.close()
 
 	def handle_read(self):
 		data = self.recv(8192)
@@ -149,6 +153,8 @@ class Proxy(asyncore.dispatcher):
 	def handle_write(self):
 		sent = self.send(self.buffer)
 		self.buffer = self.buffer[sent:]
+		if len(self.buffer) == 0 and self.end:
+			self.close()
 
 	def writable(self):
 		return len(self.buffer) > 0
@@ -157,8 +163,8 @@ class Proxy(asyncore.dispatcher):
 		if not self.other:
 			return
 		print >>sys.stderr, "Proxy closed"
-		self.other.close()
 		self.close()
+		self.other.end = True
 		self.other = None
 
 class ConnectProxy(asyncore.dispatcher):
@@ -168,7 +174,7 @@ class ConnectProxy(asyncore.dispatcher):
 
 	def handle_error(self):
 		print >>sys.stderr, "ConnectProxy error:", traceback.format_exc()
-		self.handle_close()
+		self.close()
 
 	def handle_read(self):
 		self.buffer += self.recv(8192)
@@ -198,12 +204,12 @@ class ConnectProxy(asyncore.dispatcher):
 
 		# Create server proxy
 		server = Proxy((host, port))
+		server.buffer = self.buffer
 
 		# Morph and connect
 		self.__class__ = Proxy
+		self.init()
 		server.meet(self)
-		server.buffer = self.buffer
-		self.buffer = ""
 
 
 class BasicForwarder(asyncore.dispatcher):
