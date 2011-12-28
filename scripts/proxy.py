@@ -164,6 +164,8 @@ class Proxy(asyncore.dispatcher):
 			return
 		print >>sys.stderr, "Proxy closed"
 		self.close()
+		if len(self.other.buffer) == 0:
+			self.other.close()
 		self.other.end = True
 		self.other = None
 
