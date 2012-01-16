@@ -19,6 +19,8 @@ except IndexError:
 
 USBDEVFS_RESET = 21780
 
+os.umask(0007)
+
 p = subprocess.Popen(["lsusb"], stdout=subprocess.PIPE)
 for line in p.stdout:
 	line = line.split()
