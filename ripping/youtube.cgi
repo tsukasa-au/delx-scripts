@@ -6,12 +6,14 @@ import json
 from lxml.html import document_fromstring
 import os
 import re
+import resource
 import shutil
 import subprocess
 import sys
 import urllib2
 
 
+MAX_MEMORY_BYTES = 128 * 1024*1024
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:7.0.1) Gecko/20100101 Firefox/7.0.1"
 
 fmt_quality = [
@@ -169,6 +171,7 @@ def main():
 
 
 if __name__ == "__main__":
+	resource.setrlimit(resource.RLIMIT_AS, (MAX_MEMORY_BYTES, MAX_MEMORY_BYTES))
 	if os.environ.has_key("SCRIPT_NAME"):
 		cgimain()
 	else:
