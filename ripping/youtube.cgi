@@ -2,6 +2,7 @@
 
 import cookielib
 import cgi
+import json
 from lxml.html import document_fromstring
 import os
 import re
@@ -86,7 +87,18 @@ def get_video_url(doc):
 	unavailable = doc.xpath("//div[@id='unavailable-message']/text()")
 	if unavailable:
 		raise VideoUnavailable(unavailable[0].strip())
-	embed = doc.xpath("//embed")[0]
+	script = doc.xpath("//div[@id='watch-player']")[0].getnext().text
+	for line in script.split("\n"):
+		if "var swf =" in line:
+			p1 = line.find("=")
+			p2 = line.rfind(";")
+			if p1 <= 0 or p2 <= 0:
+				continue
+			embed = line[p1+1:p2]
+			break
+	else:
+		raise VideoUnavailable("Could not find video URL")
+	embed = document_fromstring(json.loads(embed)).xpath("//embed")[0]
 	flashvars = embed.attrib["flashvars"]
 	flashvars = cgi.parse_qs(flashvars)
 	fmt_url_map = {}
