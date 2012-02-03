@@ -4,6 +4,7 @@ import fcntl
 import os
 import subprocess
 import sys
+import time
 
 if not sys.platform.startswith("linux"):
 	print >>sys.stderr, "Sorry, this tool requires Linux"
@@ -32,11 +33,13 @@ for line in p.stdout:
 
 	filename = "/dev/bus/usb/%s/%s" % (bus, dev)
 	print "Resetting", filename, "...",
+	sys.stdout.flush()
 	fd = os.open(filename, os.O_WRONLY)
 	ret = fcntl.ioctl(fd, USBDEVFS_RESET, 0)
 	if ret < 0:
 		print >>sys.stderr, "\nError in ioctl:", ret
 		sys.exit(1)
 	os.close(fd)
+	time.sleep(1)
 	print "done"
 
