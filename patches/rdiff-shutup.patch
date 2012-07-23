@@ -1,0 +1,12 @@
+--- /usr/share/pyshared/rdiff_backup/selection.py.bak	2012-07-23 22:58:47.588142001 +1000
++++ /usr/share/pyshared/rdiff_backup/selection.py	2012-07-23 23:00:10.556142002 +1000
+@@ -116,6 +116,9 @@
+ 
+ 			"""
+ 			for filename in self.listdir(rpath):
++				if filename == ".gvfs":
++					# stop sending me emails!
++					continue
+ 				new_rpath = robust.check_common_error(error_handler,
+ 										rpath.append, (filename,))
+ 				if new_rpath and new_rpath.lstat():
