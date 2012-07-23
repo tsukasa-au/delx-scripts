@@ -1,0 +1,8 @@
+#!/bin/bash
+
+num=1
+ls -tr | while read f; do
+	mv "$f" "$num $f"
+	let "num=num+1"
+done
+
