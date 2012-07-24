@@ -15,12 +15,15 @@ fi
 # want, on the root file system, to back up.
 # Also exclude other large collections of files which we don't care to save.
 rdiff-backup \
-	--exclude-other-filesystems \
 	--exclude-sockets \
+	--exclude '/home/*/tmp' \
+	--include '/home' \
 	--exclude '/backup' \
 	--exclude '/tmp' \
 	--exclude '/var/cache/apt/archives' \
 	--exclude '/var/log' \
+	--include '/var' \
+	--exclude-other-filesystems \
 	/ /backup/
 
 
