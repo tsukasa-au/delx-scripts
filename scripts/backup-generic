@@ -1,31 +1,33 @@
 #!/bin/bash -e
 
 # Run this at a lower priority to avoid disrupting the rest of the system
+ionice -c 3 -p $$
+renice -n 19 -p $$ > /dev/null
+
+(
+# Only allow one backup to run at a time
+if ! flock -n -x 200; then
+	echo "Failed to get a lock!"
+	exit 1
+fi
+
 # Exclude other filesystems from the backup. This leaves only the files we
 # want, on the root file system, to back up.
 # Also exclude other large collections of files which we don't care to save.
+rdiff-backup \
+	--exclude-other-filesystems \
+	--exclude-sockets \
+	--exclude '/backup' \
+	--exclude '/tmp' \
+	--exclude '/var/cache/apt/archives' \
+	--exclude '/var/log' \
+	/ /backup/
 
-if [ -f /.backup_running ]; then
-    echo "Backup already running!"
-    exit 1
-fi
 
-touch /.backup_running
+# Remove old backups to free up some space
+rdiff-backup -v1 --force --remove-older-than 365D /backup/
 
-ionice -c3 nice -n5 \
-    rdiff-backup \
-        --exclude-other-filesystems \
-        --exclude-sockets \
-        --exclude '/backup' \
-        --exclude '/tmp' \
-        --exclude '/var/cache/apt/archives' \
-        --exclude '/var/log' \
-        / /backup/
-# Remove old backups
-sleep 3600
-ionice -c3 nice -n5 rdiff-backup -v1 --remove-older-than 60D /backup/
-
-rm -f /.backup_running
+) 200>/var/run/backup
 
 exit 0
 
