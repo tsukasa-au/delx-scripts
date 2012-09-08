@@ -65,8 +65,8 @@ def grab(u):
 	doc = etree.parse(urllib.urlopen(wmfile))
 	streams = doc.xpath("//ref/@href")
 
-	author = qs["pgm"]
-	title = qs["t"]
+	author = qs["pgm"][0]
+	title = qs["t"][0]
 
 	for stream in streams:
 		if not stream.startswith("mms://"):
@@ -77,6 +77,8 @@ def grab(u):
 print "Paste 'Listen Now' URLs from ABC... Press CTRL-D to finish"
 try:
 	for line in sys.stdin:
+		if not line.strip():
+			continue
 		grab(line)
 except KeyboardInterrupt:
 	print "\nExiting..."
