@@ -2,32 +2,34 @@
 
 import cookielib
 import cgi
+import itertools
 import json
-from lxml.html import document_fromstring
+from lxml.html import document_fromstring, tostring
 import os
 import re
 import resource
 import shutil
 import subprocess
 import sys
+import urllib
 import urllib2
+import urlparse
 
 
 MAX_MEMORY_BYTES = 128 * 1024*1024
-USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:7.0.1) Gecko/20100101 Firefox/7.0.1"
+USER_AGENT = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0.1"
 
-fmt_quality = [
-	(38, ".mp4"),  # 4096x3072
-	(37, ".mp4"),  # 1920x1080
-	(22, ".mp4"),  # 1280x720
-###	(45, ".webm"), # 1280x720
-###	(43, ".webm"), # 640x360
-	(35, ".flv"),  # 854x480
-	(34, ".flv"),  # 640x360
-	(18, ".mp4"),  # 480x360
-	(5,  ".flv"),  # 400x240
-	(17, ".3gp"),  # 176x144
-]
+MIMETYPES = {
+	"video/mp4": "mp4",
+	"video/x-flv": "flv",
+	"video/3gpp": "3gp",
+}
+
+QUALITIES = {
+	"large": 3,
+	"medium": 2,
+	"small": 1,
+}
 
 
 class VideoUnavailable(Exception):
@@ -68,15 +70,17 @@ def print_form(url="", msg=""):
 </html>
 """.replace("{0}", msg).replace("{1}", url).replace("{2}", script_url)
 
-urlopener = urllib2.build_opener(urllib2.HTTPCookieProcessor())
-urlopener.addheaders = [("User-agent", USER_AGENT)]
+cookiejar = cookielib.CookieJar()
+urlopener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookiejar))
 referrer = ""
 
 def urlopen(url):
 	global referrer
 	req = urllib2.Request(url)
-	req.add_header("Referer", referrer)
+	if referrer:
+		req.add_header("Referer", referrer)
 	referrer = url
+	req.add_header("User-Agent", USER_AGENT)
 	return urlopener.open(req)
 
 def parse_url(url):
@@ -85,37 +89,78 @@ def parse_url(url):
 	f.close()
 	return doc
 
+def append_to_qs(url, params):
+	r = list(urlparse.urlsplit(url))
+	qs = urlparse.parse_qs(r[3])
+	qs.update(params)
+	r[3] = urllib.urlencode(qs, True)
+	url = urlparse.urlunsplit(r)
+	return url
+
+def convert_from_old_itag(player_config):
+	url_data = urlparse.parse_qs(player_config["args"]["url_encoded_fmt_stream_map"])
+	url_data["url"] = []
+	for itag_url in url_data["itag"]:
+		pos = itag_url.find("url=")
+		url_data["url"].append(itag_url[pos+4:])
+	player_config["args"]["url_encoded_fmt_stream_map"] = urllib.urlencode(url_data, True)
+
+def get_player_config(doc):
+	player_config = None
+	for script in doc.xpath("//script"):
+		if not script.text:
+			continue
+		for line in script.text.split("\n"):
+			if "yt.playerConfig =" in line:
+				p1 = line.find("=")
+				p2 = line.rfind(";")
+				if p1 >= 0 and p2 > 0:
+					return json.loads(line[p1+1:p2])
+			if "'PLAYER_CONFIG': " in line:
+				p1 = line.find(":")
+				if p1 >= 0:
+					player_config = json.loads(line[p1+1:])
+					convert_from_old_itag(player_config)
+					return player_config
+
+def get_best_video(player_config):
+	url_data = urlparse.parse_qs(player_config["args"]["url_encoded_fmt_stream_map"])
+	url_data = itertools.izip_longest(
+		url_data["url"],
+		url_data["type"],
+		url_data["quality"],
+		url_data.get("sig", []),
+	)
+	best_url = None
+	best_quality = None
+	best_extension = None
+	for video_url, mimetype, quality, signature in url_data:
+		mimetype = mimetype.split(";")[0]
+		if mimetype not in MIMETYPES:
+			continue
+		extension = "." + MIMETYPES[mimetype]
+		quality = QUALITIES.get(quality.split(",")[0], -1)
+		if best_quality is None or quality > best_quality:
+			if signature:
+				video_url = append_to_qs(video_url, {"signature": signature})
+			best_url = video_url
+			best_quality = quality
+			best_extension = extension
+
+	return best_url, best_extension
+
 def get_video_url(doc):
 	unavailable = doc.xpath("//div[@id='unavailable-message']/text()")
 	if unavailable:
 		raise VideoUnavailable(unavailable[0].strip())
-	script = doc.xpath("//div[@id='watch-player']")[0].getnext().text
-	for line in script.split("\n"):
-		if "var swf =" in line:
-			p1 = line.find("=")
-			p2 = line.rfind(";")
-			if p1 <= 0 or p2 <= 0:
-				continue
-			embed = line[p1+1:p2]
-			break
-	else:
+
+	player_config = get_player_config(doc)
+	if not player_config:
 		raise VideoUnavailable("Could not find video URL")
-	embed = document_fromstring(json.loads(embed)).xpath("//embed")[0]
-	flashvars = embed.attrib["flashvars"]
-	flashvars = cgi.parse_qs(flashvars)
-	fmt_url_map = {}
-	for url_desc in flashvars["url_encoded_fmt_stream_map"][0].split(","):
-		url_desc_map = cgi.parse_qs(url_desc)
-		key = int(url_desc_map["itag"][0])
-		fmt_url_map[key] = url_desc_map["url"][0]
-	for fmt, extension in fmt_quality:
-		try:
-			video_url = fmt_url_map[fmt]
-			break
-		except KeyError:
-			continue
-	else:
-		return None, None, None
+
+	video_url, extension = get_best_video(player_config)
+	if not video_url:
+		return None, None
 
 	title = doc.xpath("/html/head/title/text()")[0]
 	title = re.sub("\s+", " ", title.strip())
