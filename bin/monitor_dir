@@ -10,7 +10,7 @@ fi
 mon="$1/${2:-.monitor_dir}"
 mon_tmp="${mon}_tmp"
 
-ls -R "$1" > "$mon_tmp"
+ls -tlR "$1" > "$mon_tmp"
 if [ -r "$mon" ] && ! cmp -s "$mon" "$mon_tmp" && [ -n "$(ls "$1")" ]; then
 	cat "$mon_tmp"
 fi
