@@ -4,15 +4,15 @@
 #   */5 *   *   *   *     $HOME/bin/monitor_dir /path/to/something
 
 if [ -z "$1" ]; then
-	echo "Usage $0 dir [monitor_file]"
+	echo "Usage $0 dir [monitor_file] [ls-options]"
 	exit 1
 fi
-mon="$1/${2:-.monitor_dir}"
+mon="${2:-$1/.monitor_dir}"
 mon_tmp="${mon}_tmp"
 
-ls -tlR "$1" > "$mon_tmp"
+ls "${3:--tlR}" "$1" > "$mon_tmp"
 if [ -r "$mon" ] && ! cmp -s "$mon" "$mon_tmp" && [ -n "$(ls "$1")" ]; then
-	cat "$mon_tmp"
+	diff "$mon" "$mon_tmp" | grep '^> ' | sed 's/^> //'
 fi
 mv "$mon_tmp" "$mon"
 
