@@ -15,6 +15,7 @@ fi
 # want, on the root file system, to back up.
 # Also exclude other large collections of files which we don't care to save.
 rdiff-backup \
+	--preserve-numerical-ids \
 	--exclude-sockets \
 	--exclude '/home/*/tmp' \
 	--include '/home' \
