@@ -1,0 +1,183 @@
+#!/bin/bash -e
+
+RELEASE='12.04'
+PACKAGE_NAME="ubuntu-desktop-custom"
+PACKAGE_VERSION="1.0.$(date +%Y-%m-%d.%H-%M)"
+
+DEPENDS='
+git
+mercurial
+subversion
+netcat6
+netcat-openbsd
+sqlite3
+unrar
+zip
+xz-utils
+gnome-session-fallback
+lightdm-gtk-greeter
+vim
+aptitude
+curl
+colordiff
+cryptsetup
+curl
+dvdbackup
+elinks
+equivs
+gvfs-bin
+keepassx
+libav-tools
+lvm2
+build-essential
+libreoffice
+mythes-en-au
+mythes-en-us
+python-lxml
+renameutils
+screen
+sshfs
+xdotool
+xsel
+language-pack-en
+language-pack-gnome-en
+hyphen-en-us
+dconf-tools
+gpick
+gstreamer-tools
+imagemagick
+xtightvncviewer
+rdesktop
+exiftags
+fdupes
+kid3-qt
+screenruler
+atop
+mplayer
+'
+
+EXCLUDE='
+activity-log-manager-control-center
+app-install-data-partner
+apport-gtk
+branding-ubuntu
+checkbox-qt
+deja-dup
+empathy
+example-content
+gnome-session
+gnome-session-canberra
+gwibber
+ibus
+ibus-gtk3
+ibus-pinyin
+ibus-pinyin-db-android
+ibus-table
+in-switch
+kerneloops-daemon
+landscape-client-ui-install
+launchpad-integration
+nautilus-share
+nautilus-sendto
+rhythmbox
+rhythmbox-plugin-magnatune
+rhythmbox-ubuntuone
+software-center
+software-properties-gtk
+telepathy-idle
+thunderbird
+thunderbird-gnome-support
+transmission-gtk
+ubuntu-sounds
+ubuntuone-client-gnome
+ubuntuone-installer
+unity
+unity-2d
+unity-greeter
+whoopsie
+xul-ext-ubufox
+'
+
+
+####################
+# Preflight checks #
+####################
+
+if [ "$(lsb_release -r | cut -d ':' -f 2 | tr -d '	 ')" != "$RELEASE" ]; then
+	echo "Sorry, at the moment this script only supports Ubuntu $RELEASE"
+	exit 1
+fi
+
+if ! grep -q universe /etc/apt/sources.list /etc/apt/sources.list.d/*.list; then
+	echo "You must enable universe in your apt sources.list"
+	exit 1
+fi
+
+if ! grep -q multiverse /etc/apt/sources.list /etc/apt/sources.list.d/*.list; then
+	echo "You must enable multiverse in your apt sources.list"
+	exit 1
+fi
+
+if ! which equivs-build > /dev/null; then
+	sudo apt-get install equivs
+fi
+
+
+
+##########################
+# Build the control file #
+##########################
+
+CONTROLFILE="$(tempfile)"
+echo "-- Writing control file to $CONTROLFILE"
+
+cat > "$CONTROLFILE" <<EOT
+Package: $PACKAGE_NAME
+Section: metapackages
+Priority: optional
+Standards-Version: 3.9.2
+Conflicts: ubuntu-desktop
+Replaces: ubuntu-desktop
+
+Version: $PACKAGE_VERSION
+Description: Customised Ubuntu desktop system
+ Similar to ubuntu-desktop, but with some additions and removals.
+EOT
+
+function get_line {
+	line="$(apt-cache show ubuntu-desktop | grep "$1:")"
+	for pkg in $EXCLUDE; do
+		line="$(echo "$line" | sed -e "s/$pkg, //" -e "s/, $pkg\$//")"
+	done
+	echo -n "$line"
+}
+
+(
+echo
+
+get_line 'Depends'
+echo ", $(echo $DEPENDS | sed 's/ /, /g')"
+
+get_line 'Recommends'
+echo
+) >> "$CONTROLFILE"
+
+
+##################
+# Build the .deb #
+##################
+
+echo "-- Building .deb in working directory"
+equivs-build "$CONTROLFILE"
+rm -f "$CONTROLFILE"
+
+
+#############
+# Go go go! #
+#############
+
+echo "-- Go go go!"
+sudo aptitude install $DEPENDS
+sudo dpkg -i "${PACKAGE_NAME}_${PACKAGE_VERSION}_all.deb"
+sudo aptitude purge $REMOVE
+
