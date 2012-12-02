@@ -1,36 +1,18 @@
 #!/bin/bash
 
-PIDFILE="$HOME/.mediawrap.pid"
+LOCKFILE="$HOME/.mediawrap.lock"
 PULSESTATE="$HOME/.pulseaudio.state"
-KEYPATH="/apps/gnome_settings_daemon/keybindings"
 
-# Wait for any other wrapped software to finish
-for i in $(seq 6); do
-	if [ ! -r "$PIDFILE" ]; then
-		break
-	fi
-	if [ "$(ps -o cmd= -p "$(cat "$PIDFILE")" | wc -l)" -eq 0 ]; then
-		rm -f "$PIDFILE"
-		break
-	fi
-	sleep 0.5
-done
-if [ -r "$PIDFILE" ]; then
+(
+if ! flock -w 10 -x 200; then
+	echo "Failed to get a lock!"
 	exit 1
 fi
-echo $$ > "$PIDFILE"
-
-# Disable volume keys
-if [ "$1" = "--disable-volume-keys" ]; then
-	disable_volume_keys=1
-	shift
-	gconftool --set --type string "$KEYPATH/volume_up" ''
-	gconftool --set --type string "$KEYPATH/volume_down" ''
-	gconftool --set --type string "$KEYPATH/volume_mute" ''
-fi
+echo "got lock"
 
 # Unmute everything and turn volume to full
 if [ "$1" = "--max-volume" ]; then
+	echo "max volume"
 	max_volume=1
 	shift
 	pacmd 'dump' | grep 'set-sink' > "$PULSESTATE"
@@ -41,6 +23,16 @@ if [ "$1" = "--max-volume" ]; then
 		done
 fi
 
+# Switch volume keys to F9/F10 with xmodmap
+if [ "$1" = "--switch-volume-keys" ]; then
+	echo "switch volume"
+	switch_volume=1
+	shift
+	xmodmap -e 'keycode 122 = F9'
+	xmodmap -e 'keycode 123 = F10'
+fi
+
+
 # Run the program
 "$@" &> /dev/null
 
@@ -50,13 +42,14 @@ if [ -n "$max_volume" ]; then
 	cat "$PULSESTATE" | pacmd > /dev/null
 fi
 
-# Enable volume keys
-if [ -n "$disable_volume_keys" ]; then
-	gconftool --set --type string "$KEYPATH/volume_up" 'XF86AudioRaiseVolume'
-	gconftool --set --type string "$KEYPATH/volume_down" 'XF86AudioLowerVolume'
-	gconftool --set --type string "$KEYPATH/volume_mute" 'XF86AudioMute'
+# Restore volume keys
+if [ -n "$switch_volume" ]; then
+	xmodmap -e 'keycode 122 = XF86AudioLowerVolume'
+	xmodmap -e 'keycode 123 = XF86AudioRaiseVolume'
 fi
 
+) 200>"$LOCKFILE"
+
 # Cleanup so other programs can start
-rm -f "$PIDFILE"
+rm -f "$LOCKFILE"
 
