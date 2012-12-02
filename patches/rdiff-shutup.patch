@@ -10,3 +10,17 @@
  				new_rpath = robust.check_common_error(error_handler,
  										rpath.append, (filename,))
  				if new_rpath and new_rpath.lstat():
+--- /usr/share/pyshared/rdiff_backup/backup.py.bak	2009-03-17 01:36:21.000000000 +1100
++++ /usr/share/pyshared/rdiff_backup/backup.py	2012-12-03 07:50:47.558269374 +1100
+@@ -607,8 +607,9 @@
+ 		if not new_rp.isreg(): return 1
+ 		cached_rorp = self.CCPP.get_source_rorp(diff_rorp.index)
+ 		if cached_rorp and cached_rorp.equal_loose(new_rp): return 1
+-		log.ErrorLog.write_if_open("UpdateError", diff_rorp, "Updated mirror "
+-					  "temp file %s does not match source" % (new_rp.path,))
++		# stop sending me emails!
++#		log.ErrorLog.write_if_open("UpdateError", diff_rorp, "Updated mirror "
++#					  "temp file %s does not match source" % (new_rp.path,))
+ 		return 0
+ 
+ 	def write_special(self, diff_rorp, new):
