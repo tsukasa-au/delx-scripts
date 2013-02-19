@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 # Use with crontab entry like:
-#   */5 *   *   *   *     $HOME/bin/monitor_dir /path/to/something
+#   */5 *   *   *   *     $HOME/bin/monitor-dir /path/to/something
 
 if [ -z "$1" ]; then
 	echo "Usage $0 dir [monitor_file] [ls]"
