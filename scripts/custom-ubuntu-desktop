@@ -5,55 +5,54 @@ PACKAGE_NAME="ubuntu-desktop-custom"
 PACKAGE_VERSION="1.0.$(date +%Y-%m-%d.%H-%M)"
 
 DEPENDS='
-git
-mercurial
-subversion
-netcat6
-netcat-openbsd
-sqlite3
-unrar
-zip
-xz-utils
-gnome-session-fallback
-lightdm-gtk-greeter
-vim
 aptitude
-curl
+atop
+build-essential
 colordiff
 cryptsetup
 curl
+dconf-tools
 dvdbackup
 elinks
 equivs
-gvfs-bin
-keepassx
-libav-tools
-lvm2
-build-essential
-libreoffice
-mythes-en-au
-mythes-en-us
-python-lxml
-renameutils
-screen
-sshfs
-xdotool
-xsel
-language-pack-en
-language-pack-gnome-en
-hyphen-en-us
-dconf-tools
-gpick
-gstreamer-tools
-imagemagick
-xtightvncviewer
-rdesktop
 exiftags
 fdupes
+git
+gnome-session-fallback
+gpick
+gstreamer-tools
+gvfs-bin
+hyphen-en-us
+imagemagick
+keepassx
 kid3-qt
-screenruler
-atop
+language-pack-en
+language-pack-gnome-en
+libav-tools
+libreoffice
+lightdm-gtk-greeter
+lvm2
+mercurial
 mplayer
+mythes-en-au
+mythes-en-us
+netcat-openbsd
+netcat6
+python-lxml
+rdesktop
+renameutils
+screen
+screenruler
+sqlite3
+sshfs
+subversion
+unrar
+vim
+xdotool
+xsel
+xtightvncviewer
+xz-utils
+zip
 '
 
 EXCLUDE='
@@ -77,8 +76,8 @@ in-switch
 kerneloops-daemon
 landscape-client-ui-install
 launchpad-integration
-nautilus-share
 nautilus-sendto
+nautilus-share
 rhythmbox
 rhythmbox-plugin-magnatune
 rhythmbox-ubuntuone
@@ -179,5 +178,5 @@ rm -f "$CONTROLFILE"
 echo "-- Go go go!"
 sudo aptitude install $DEPENDS
 sudo dpkg -i "${PACKAGE_NAME}_${PACKAGE_VERSION}_all.deb"
-sudo aptitude purge $REMOVE
+sudo aptitude purge $EXCLUDE
 
