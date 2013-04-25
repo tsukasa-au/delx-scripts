@@ -10,5 +10,5 @@ echo "$@"
 
 
 sleep 1
-exec "$(grep Exec ~/Desktop/xbmc.desktop | cut -d= -f2)"
+exec $(grep Exec ~/Desktop/xbmc.desktop | cut -d= -f2)
 
