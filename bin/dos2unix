@@ -1,8 +1,0 @@
-#!/bin/bash -e
-
-while [ "$1" != "" ]; do
-	dosunix "$1" /tmp/outfile
-	mv /tmp/outfile "$1"
-	shift
-done
-
