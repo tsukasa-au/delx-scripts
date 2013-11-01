@@ -1,0 +1,17 @@
+#!/bin/bash
+
+list="
+UTC
+Australia/Sydney
+Australia/Perth
+Europe/London
+America/Chicago
+America/Los_Angeles
+"
+
+for tz in $list; do
+	printf "%-25s" "$tz"
+	TZ="$tz" date
+	echo
+done
+
