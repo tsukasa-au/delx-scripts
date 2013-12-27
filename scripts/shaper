@@ -4,15 +4,14 @@
 
 # Tweakables
 IFACE="ppp0"
-VOIP_HOST="203.2.134.1"
+VOIP_HOST="$(dig +short sip.internode.on.net)"
 
-UPLINK_RATE=900
-R2Q=2
+UPLINK_RATE=450
 
 VOIP_RATE=70
-HIGH_RATE=230
-NORM_RATE=350
-BULK_RATE=250
+HIGH_RATE=130
+NORM_RATE=240
+BULK_RATE=10
 
 
 # Symbolic 'constants'
@@ -24,35 +23,32 @@ NORM_TRAFFIC=30
 BULK_TRAFFIC=40
 
 
-
-
-
 # Print status of classes
-if [ "$1" = "status" ]
-then
+if [ "$1" = "status" ]; then
 	tc -s qdisc ls dev ${IFACE}
 	tc -s class ls dev ${IFACE}
 	exit
 fi
 
+set -x
 
 # clean existing down- and uplink qdiscs, hide errors
 tc qdisc del dev ${IFACE} root    2> /dev/null > /dev/null
 tc qdisc del dev ${IFACE} ingress 2> /dev/null > /dev/null
 
-if [ "$1" = "stop" ] 
-then 
+if [ "$1" = "stop" ]; then
 	exit
 fi
 
 cd /
+
 
 ########## uplink #############
 
 # install root HTB, point default traffic to NORM_TRAFFIC
 tc qdisc add dev ${IFACE} \
 	root handle ${ROOT}:0 \
-	htb default ${NORM_TRAFFIC} r2q ${R2Q}
+	htb default ${NORM_TRAFFIC}
 
 
 # LIMIT class shapes everything at $UPLINK_RATE speed
@@ -65,7 +61,7 @@ tc class add dev ${IFACE} \
 # VoIP traffic class gets guaranteed bandwidth
 tc class add dev ${IFACE} \
 	parent ${ROOT}:${LIMIT} classid ${ROOT}:${VOIP_TRAFFIC} \
-	htb rate ${VOIP_RATE}Kbit ceil $[3*${VOIP_RATE}/2]Kbit prio 0
+	htb rate ${VOIP_RATE}Kbit ceil ${UPLINK_RATE}Kbit prio 0
 
 # High priority traffic
 tc class add dev ${IFACE} \
@@ -82,6 +78,7 @@ tc class add dev ${IFACE} \
 	parent ${ROOT}:${LIMIT} classid ${ROOT}:${BULK_TRAFFIC} \
 	htb rate ${BULK_RATE}Kbit ceil ${UPLINK_RATE}Kbit prio 3
 
+
 # Stochastic Fairness
 tc qdisc add dev ${IFACE} \
 	parent ${ROOT}:${HIGH_TRAFFIC} handle ${HIGH_TRAFFIC}:0 \
@@ -94,15 +91,12 @@ tc qdisc add dev ${IFACE} \
 	sfq perturb 10
 
 
-
-
-
 # Match VoIP traffic as highest priority
 tc filter add dev ${IFACE} \
 	parent ${ROOT}:0 protocol ip prio 10 u32 \
 	match ip dst ${VOIP_HOST} flowid ${ROOT}:${VOIP_TRAFFIC}
 
-# ICMP (ip protocol 1) in the HIGH_TRAFFIC class
+# ICMP in the HIGH_TRAFFIC class
 tc filter add dev ${IFACE} \
 	parent ${ROOT}:0 protocol ip prio 10 u32 \
 	match ip protocol 1 0xff flowid ${ROOT}:${HIGH_TRAFFIC}
@@ -125,5 +119,4 @@ tc filter add dev ${IFACE} \
 tc filter add dev ${IFACE} \
 	parent ${ROOT}:0 protocol ip prio 10 u32 \
 	match ip tos 0x08 0xff flowid ${ROOT}:${BULK_TRAFFIC}
-
 
