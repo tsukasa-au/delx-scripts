@@ -12,5 +12,5 @@ else
 	hostname="$public_hostname"
 fi
 
-exec ssh "$hostname" "$@" -t screen -dR
+exec ssh "$hostname" "$@" -t "bash --login -c 'screen -dR'"
 
