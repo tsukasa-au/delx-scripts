@@ -1,0 +1,13 @@
+[Unit]
+Description=pulseaudio service
+
+[Service]
+User=pulse
+ExecStart=/usr/bin/pulseaudio -v
+Restart=always
+LimitRTPRIO=65
+LimitNICE=-10
+LimitMEMLOCK=40000
+
+[Install]
+WantedBy=multi-user.target
