@@ -1,0 +1,10 @@
+#!/bin/bash
+
+pacdir="/tmp/pacman-db-update-check"
+
+rm -rf "$pacdir"
+cp -a /var/lib/pacman "$pacdir"
+
+fakeroot pacman --dbpath "$pacdir" -Sy > /dev/null
+pacman --dbpath "$pacdir" -Qu
+
