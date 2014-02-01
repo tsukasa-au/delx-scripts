@@ -8,7 +8,10 @@ import sys
 PACORPHAN_PATH = os.path.expanduser("~/.pacorphan")
 
 keep_pkg_list = []
+mark_explicit_list = []
+need_install_list = []
 unneeded_pkg_list = []
+installed_pkg_list = []
 explicit_pkg_list = []
 
 def strip_comment(line):
@@ -29,6 +32,9 @@ for dirpath, dirnames, filenames in os.walk(PACORPHAN_PATH):
             if pkg:
                 keep_pkg_list.append(pkg.strip())
 
+for pkg in subprocess.check_output(["pacman", "-Qq"]).decode("utf-8").split():
+    installed_pkg_list.append(pkg.strip())
+
 for pkg in subprocess.check_output(["pacman", "-Qtq"]).decode("utf-8").split():
     unneeded_pkg_list.append(pkg.strip())
 
@@ -43,7 +49,10 @@ for pkg in keep_pkg_list:
     if pkg in explicit_pkg_list:
         explicit_pkg_list.remove(pkg)
     else:
-        print("# Not explicitly installed: " + pkg)
+        if pkg in installed_pkg_list:
+            mark_explicit_list.append(pkg)
+        else:
+            need_install_list.append(pkg)
 
 
 if unneeded_pkg_list:
@@ -54,5 +63,15 @@ if unneeded_pkg_list:
 if explicit_pkg_list:
     print("# Found explicitly installed packages to keep")
     print("echo " + " ".join(explicit_pkg_list) + " | tr ' ' '\\n' >> ~/.pacorphan/keep")
+    print()
+
+if mark_explicit_list:
+    print("# Found packages which should be marked as explicitly installed")
+    print("sudo pacman -D --asexplicit " + " ".join(mark_explicit_list))
+    print()
+
+if need_install_list:
+    print("# Found packages which should be installed")
+    print("sudo pacman -S " + " ".join(need_install_list))
     print()
 
