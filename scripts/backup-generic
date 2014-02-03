@@ -21,7 +21,7 @@ rdiff-backup \
 	--include '/home' \
 	--exclude '/backup' \
 	--exclude '/tmp' \
-	--exclude '/var/cache/apt/archives' \
+	--exclude '/var/cache' \
 	--exclude '/var/log' \
 	--include '/var' \
 	--exclude-other-filesystems \
