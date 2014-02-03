@@ -1,0 +1,170 @@
+#!/usr/bin/python3
+
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import time
+
+"""
+Instructions!
+1. Pair your bluetooth device, use bluetoothctl
+2. Use 'sdptool search DUN' to find the bluetooth channel
+3. Save your configuration to ~/.config/bt-connect.json
+4. Run bt-connect
+
+
+Example configuration:
+{
+	"apn": "internet",
+	"bluetooth_addr": "DE:AD:BE:EE:EE:EF",
+	"bluetooth_channel": "22"
+}
+
+"""
+
+
+class DiallerException(Exception):
+	pass
+
+class BluetoothDialler(object):
+	def __init__(self, rfcomm_id, bt_addr, bt_channel, apn):
+		self.rfcomm_id = rfcomm_id
+		self.bt_addr = bt_addr
+		self.bt_channel = bt_channel
+		self.apn = apn
+
+		self.rfcomm = None
+		self.wvdial = None
+		self.wvdial_conf_name = None
+
+
+	def release(self):
+		if self.wvdial:
+			try:
+				self.wvdial.terminate()
+				self.wvdial.wait()
+			except Exception as e:
+				print(e)
+
+		if self.rfcomm:
+			try:
+				self.rfcomm.terminate()
+				self.rfcomm.wait()
+			except Exception as e:
+				print(e)
+
+		if self.wvdial_conf_name:
+			try:
+				os.unlink(self.wvdial_conf_name)
+			except Exception as e:
+				print(e)
+
+		try:
+			reset_rfcomm(self.rfcomm_id)
+		except Exception as e:
+			print(e)
+
+
+	def connect_rfcomm(self):
+		self.rfcomm = subprocess.Popen([
+			"rfcomm",
+			"connect",
+			self.rfcomm_id,
+			self.bt_addr,
+			self.bt_channel,
+		])
+
+		# poll until connected
+		start = time.time()
+		while time.time() - start < 10:
+			if self.is_rfcomm_connected():
+				return
+			time.sleep(0.1)
+		raise DiallerException("Timeout connecting rfcomm")
+
+	def is_rfcomm_connected(self):
+		output = subprocess.check_output(["rfcomm", "-a"])
+		for line in output.decode("ascii").split("\n"):
+			if not line.startswith("rfcomm%s:" % self.rfcomm_id):
+				continue
+			if line.find(" connected ") >= 0:
+				return True
+		return False
+
+	def write_wvdial_conf(self):
+		fd, self.wvdial_conf_name = tempfile.mkstemp()
+		f = os.fdopen(fd, "w")
+		f.write("""
+[Dialer Defaults]
+Modem = /dev/rfcomm0
+Baud = 115200
+Init = ATZ
+Init2 = AT+CGDCONT=1,"IP","%s"
+Phone = *99#
+Username = dummy
+Password = dummy
+""" % self.apn)
+		f.close()
+
+	def connect_wvdial(self):
+		self.wvdial = subprocess.Popen([
+			"wvdial", "-C", self.wvdial_conf_name
+		])
+		self.wvdial.wait()
+
+	def run(self):
+		try:
+			print("Connecting rfcomm...")
+			self.connect_rfcomm()
+			self.write_wvdial_conf()
+			print("Dialling...")
+			self.connect_wvdial()
+		except KeyboardInterrupt as e:
+			print("Exiting...")
+		except DiallerException as e:
+			print(e)
+		finally:
+			self.release()
+
+
+def get_next_rfcomm_id():
+	# for now always use rfcomm0
+	reset_rfcomm("all")
+	return "0"
+
+def reset_rfcomm(rfcomm_id):
+	subprocess.call(["rfcomm", "release", rfcomm_id], stderr=open("/dev/null"))
+
+def read_config(filename):
+	try:
+		config = open(os.path.expanduser(filename))
+	except OSError as e:
+		print("Failed to open config file: %s" % e)
+		sys.exit(1)
+
+	try:
+		return json.load(config)
+	except ValueError as e:
+		print("Failed to parse config file %s: %s" % (filename, e))
+		sys.exit(1)
+
+
+def main():
+	rfcomm_id = get_next_rfcomm_id()
+	config = read_config("~/.config/bt-connect.json")
+	dialler = BluetoothDialler(
+		rfcomm_id=rfcomm_id,
+		bt_addr=config["bluetooth_addr"],
+		bt_channel=config["bluetooth_channel"],
+		apn=config["apn"],
+	)
+	dialler.run()
+
+
+if __name__ == "__main__":
+	main()
+
+
+
