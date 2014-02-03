@@ -20,17 +20,16 @@ def strip_comment(line):
         line = line[:pos]
     return line.strip()
 
-for dirpath, dirnames, filenames in os.walk(PACORPHAN_PATH):
-    for filename in filenames:
-        if filename.startswith("."):
-            continue
-        filename = os.path.join(dirpath, filename)
-        for pkg in codecs.open(filename, "r", "utf-8"):
-            pkg = strip_comment(pkg)
-            if pkg in keep_pkg_list:
-                print("# Duplicate entry: " + pkg)
-            if pkg:
-                keep_pkg_list.append(pkg.strip())
+for filename in os.listdir(PACORPHAN_PATH):
+    if filename.startswith("."):
+        continue
+    filename = os.path.join(PACORPHAN_PATH, filename)
+    for pkg in codecs.open(filename, "r", "utf-8"):
+        pkg = strip_comment(pkg)
+        if pkg in keep_pkg_list:
+            print("# Duplicate entry: " + pkg)
+        if pkg:
+            keep_pkg_list.append(pkg.strip())
 
 for pkg in subprocess.check_output(["pacman", "-Qq"]).decode("utf-8").split():
     installed_pkg_list.append(pkg.strip())
