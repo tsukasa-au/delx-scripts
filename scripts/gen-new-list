@@ -1,0 +1,24 @@
+#!/bin/bash
+
+set -e
+
+if [ -z "$1" ]; then
+	echo "Usage: $0 /path/to/videos [new-link-dir] [num_days]"
+	exit 1
+fi
+
+watch_dir="$1"
+new_link_dir="${2:-${watch_dir}/-NEW-}"
+num_days="${3:-14}"
+
+find "$watch_dir/-NEW-" -type l -delete
+
+find "$watch_dir" -type f -mtime "-${num_days}" |
+	while read line; do
+		if basename "$line" | grep -q '^\.'; then
+			continue
+		fi
+		linkname="$(echo "$line" | sed -e "s|$watch_dir/||" -e "s|/| - |g")"
+		ln -s "$line" "$watch_dir/-NEW-/$linkname"
+	done
+
