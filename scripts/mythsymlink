@@ -72,6 +72,9 @@ for row in cursor:
 	source = "%s/%s" % (recordingsdir, basename)
 	dest = "%s/%s" % (title, filename)
 
+	if not os.path.isfile(source):
+		continue
+
 	dirnames = dest.split("/")[:-1]
 	for i in xrange(1, len(dirnames)+1):
 		dirname = "/".join(dirnames[:i])
