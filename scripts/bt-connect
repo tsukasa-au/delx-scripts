@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import dbus
 import json
 import os
 import subprocess
@@ -38,7 +39,7 @@ class BluetoothDialler(object):
 		self.rfcomm = None
 		self.wvdial = None
 		self.wvdial_conf_name = None
-
+		self.dbus_system = None
 
 	def release(self):
 		if self.wvdial:
@@ -66,6 +67,26 @@ class BluetoothDialler(object):
 		except Exception as e:
 			print(e)
 
+		if self.dbus_system:
+			try:
+				self.disconnect_bluetooth()
+			except Exception as e:
+				print(e)
+
+
+	def setup_dbus(self):
+		self.dbus_system = dbus.SystemBus()
+
+	def enable_bluetooth(self):
+		bluez = self.dbus_system.get_object("org.bluez", "/org/bluez/hci0")
+		iprops = dbus.Interface(bluez, "org.freedesktop.DBus.Properties")
+		iprops.Set("org.bluez.Adapter1", "Powered", True)
+
+	def disconnect_bluetooth(self):
+		path = self.bt_addr.upper().replace(":", "_")
+		bluez_dev = self.dbus_system.get_object("org.bluez", "/org/bluez/hci0/dev_" + path)
+		idev = dbus.Interface(bluez_dev, "org.bluez.Device1")
+		idev.Disconnect()
 
 	def connect_rfcomm(self):
 		self.rfcomm = subprocess.Popen([
@@ -114,13 +135,21 @@ Password = dummy
 		])
 		self.wvdial.wait()
 
+
 	def run(self):
 		try:
+			self.setup_dbus()
+
+			print("Enabling bluetooth...")
+			self.enable_bluetooth()
+
 			print("Connecting rfcomm...")
 			self.connect_rfcomm()
 			self.write_wvdial_conf()
+
 			print("Dialling...")
 			self.connect_wvdial()
+
 		except KeyboardInterrupt as e:
 			print("Exiting...")
 		except DiallerException as e:
