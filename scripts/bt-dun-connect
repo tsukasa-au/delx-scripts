@@ -12,8 +12,8 @@ import time
 Instructions!
 1. Pair your bluetooth device, use bluetoothctl
 2. Use 'sdptool search DUN' to find the bluetooth channel
-3. Save your configuration to ~/.config/bt-connect.json
-4. Run bt-connect
+3. Save your configuration to ~/.config/bt-dun-connect.json
+4. Run bt-dun-connect
 
 
 Example configuration:
@@ -182,7 +182,7 @@ def read_config(filename):
 
 def main():
 	rfcomm_id = get_next_rfcomm_id()
-	config = read_config("~/.config/bt-connect.json")
+	config = read_config("~/.config/bt-dun-connect.json")
 	dialler = BluetoothDialler(
 		rfcomm_id=rfcomm_id,
 		bt_addr=config["bluetooth_addr"],
