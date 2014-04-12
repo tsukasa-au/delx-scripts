@@ -1,5 +1,6 @@
 [Unit]
 Description=pulseaudio service
+Requires=bluetooth.target
 
 [Service]
 User=pulse
