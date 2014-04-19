@@ -1,0 +1,98 @@
+#!/usr/bin/python3
+
+import codecs
+import subprocess
+import os
+import sys
+
+APTORPHAN_PATH = os.path.expanduser("~/.aptorphan")
+
+def run(cmd):
+    result = []
+    for line in subprocess.check_output(cmd).decode("utf-8").split("\n"):
+        line = line.strip()
+        if line:
+            result.append(line)
+    return result
+
+def strip_comment(line):
+    pos = line.find("#")
+    if pos >= 0:
+        line = line[:pos]
+    return line.strip()
+
+
+required_config = """
+APT::Install-Recommends "false";
+APT::Install-Suggests "false";
+APT::AutoRemove::RecommendsImportant "false";
+APT::AutoRemove::SuggestsImportant "false";
+""".strip().split("\n")
+
+actual_config = run(["apt-config", "dump"])
+
+missing_lines = []
+for required_line in required_config:
+    for line in actual_config:
+        if line == required_line:
+            break
+    else:
+        missing_lines.append(required_line)
+if missing_lines:
+    print("Missing apt-config, add these lines to /etc/apt/apt.conf.d/99recommends-disable")
+    print("\n".join(missing_lines))
+    sys.exit(1)
+
+
+
+
+keep_pkg_list = []
+mark_explicit_list = []
+need_install_list = []
+installed_pkg_list = []
+explicit_pkg_list = []
+
+for filename in os.listdir(APTORPHAN_PATH):
+    if filename.startswith("."):
+        continue
+    filename = os.path.join(APTORPHAN_PATH, filename)
+    for pkg in codecs.open(filename, "r", "utf-8"):
+        pkg = strip_comment(pkg)
+        if pkg in keep_pkg_list:
+            print("# Duplicate entry: " + pkg)
+        if pkg:
+            keep_pkg_list.append(pkg.strip())
+
+for pkg in run(["aptitude", "search", "~i", "-F", "%p"]):
+    installed_pkg_list.append(pkg.strip())
+
+for pkg in run(["aptitude", "search", "~i!~M", "-F", "%p"]):
+    explicit_pkg_list.append(pkg.strip())
+
+
+for pkg in keep_pkg_list:
+    if pkg in explicit_pkg_list:
+        explicit_pkg_list.remove(pkg)
+    else:
+        if pkg in installed_pkg_list:
+            mark_explicit_list.append(pkg)
+        else:
+            need_install_list.append(pkg)
+
+
+if mark_explicit_list:
+    print("# Found packages which should be marked as explicitly installed")
+    print("sudo aptitude unmarkauto " + " ".join(mark_explicit_list))
+    print()
+
+if need_install_list:
+    print("# Found packages which should be installed")
+    print("sudo aptitude install " + " ".join(need_install_list))
+    print()
+
+if explicit_pkg_list:
+    print("# Found explicitly installed packages to keep or remove")
+    print("echo " + " ".join(explicit_pkg_list) + " | tr ' ' '\\n' >> ~/.aptorphan/keep")
+    print("sudo aptitude markauto " + " ".join(explicit_pkg_list))
+    print()
+
