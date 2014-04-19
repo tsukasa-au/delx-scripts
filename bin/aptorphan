@@ -82,7 +82,7 @@ for pkg in keep_pkg_list:
 
 if mark_explicit_list:
     print("# Found packages which should be marked as explicitly installed")
-    print("sudo aptitude --schedule-only install " + " ".join(mark_explicit_list))
+    print("sudo aptitude --schedule-only install " + " ".join([("'"+x+"&m'") for x in mark_explicit_list]))
     print()
 
 if need_install_list:
