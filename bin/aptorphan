@@ -63,10 +63,10 @@ for filename in os.listdir(APTORPHAN_PATH):
         if pkg:
             keep_pkg_list.append(pkg.strip())
 
-for pkg in run(["aptitude", "search", "~i", "-F", "%p"]):
+for pkg in run(["aptitude", "search", "?or(~i!~aremove,~ainstall)", "-F", "%p"]):
     installed_pkg_list.append(pkg.strip())
 
-for pkg in run(["aptitude", "search", "~i!~M", "-F", "%p"]):
+for pkg in run(["aptitude", "search", "?or(~i!~M!~aremove,~ainstall!~M)", "-F", "%p"]):
     explicit_pkg_list.append(pkg.strip())
 
 
@@ -82,17 +82,17 @@ for pkg in keep_pkg_list:
 
 if mark_explicit_list:
     print("# Found packages which should be marked as explicitly installed")
-    print("sudo aptitude unmarkauto " + " ".join(mark_explicit_list))
+    print("sudo aptitude --schedule-only install " + " ".join(mark_explicit_list))
     print()
 
 if need_install_list:
     print("# Found packages which should be installed")
-    print("sudo aptitude install " + " ".join(need_install_list))
+    print("sudo aptitude --schedule-only install " + " ".join(need_install_list))
     print()
 
 if explicit_pkg_list:
     print("# Found explicitly installed packages to keep or remove")
     print("echo " + " ".join(explicit_pkg_list) + " | tr ' ' '\\n' >> ~/.aptorphan/keep")
-    print("sudo aptitude markauto " + " ".join(explicit_pkg_list))
+    print("sudo aptitude --schedule-only install " + " ".join([(x+"+M") for x in explicit_pkg_list]))
     print()
 
