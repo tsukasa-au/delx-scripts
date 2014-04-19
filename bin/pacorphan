@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import codecs
 import subprocess
@@ -7,18 +7,22 @@ import sys
 
 PACORPHAN_PATH = os.path.expanduser("~/.pacorphan")
 
-keep_pkg_list = []
-mark_explicit_list = []
-need_install_list = []
-unneeded_pkg_list = []
-installed_pkg_list = []
-explicit_pkg_list = []
+def run(cmd):
+    return subprocess.check_output(cmd).decode("utf-8").split("\n")
 
 def strip_comment(line):
     pos = line.find("#")
     if pos >= 0:
         line = line[:pos]
     return line.strip()
+
+
+keep_pkg_list = []
+mark_explicit_list = []
+need_install_list = []
+unneeded_pkg_list = []
+installed_pkg_list = []
+explicit_pkg_list = []
 
 for filename in os.listdir(PACORPHAN_PATH):
     if filename.startswith("."):
@@ -31,13 +35,13 @@ for filename in os.listdir(PACORPHAN_PATH):
         if pkg:
             keep_pkg_list.append(pkg.strip())
 
-for pkg in subprocess.check_output(["pacman", "-Qq"]).decode("utf-8").split():
+for pkg in run(["pacman", "-Qq"]):
     installed_pkg_list.append(pkg.strip())
 
-for pkg in subprocess.check_output(["pacman", "-Qtq"]).decode("utf-8").split():
+for pkg in run(["pacman", "-Qtq"]):
     unneeded_pkg_list.append(pkg.strip())
 
-for pkg in subprocess.check_output(["pacman", "-Qeq"]).decode("utf-8").split():
+for pkg in run(["pacman", "-Qeq"]):
     explicit_pkg_list.append(pkg.strip())
 
 
