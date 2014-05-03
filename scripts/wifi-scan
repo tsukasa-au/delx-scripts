@@ -1,0 +1,8 @@
+#!/bin/bash
+
+iface="$(iw dev|grep Interface|awk '{print $2}')"
+sudo iw dev "$iface" scan |\
+egrep '^BSS|SSID|signal|DS Parameter set' |\
+sed 's/BSS/\nBSS/' |\
+less
+
