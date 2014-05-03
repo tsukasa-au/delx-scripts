@@ -8,7 +8,10 @@ import sys
 PACORPHAN_PATH = os.path.expanduser("~/.pacorphan")
 
 def run(cmd):
-    return subprocess.check_output(cmd).decode("utf-8").split("\n")
+    for line in subprocess.check_output(cmd).decode("utf-8").split("\n"):
+        line = line.strip()
+        if line:
+            yield line
 
 def strip_comment(line):
     pos = line.find("#")
@@ -36,13 +39,13 @@ for filename in os.listdir(PACORPHAN_PATH):
             keep_pkg_list.append(pkg.strip())
 
 for pkg in run(["pacman", "-Qq"]):
-    installed_pkg_list.append(pkg.strip())
+    installed_pkg_list.append(pkg)
 
 for pkg in run(["pacman", "-Qtq"]):
-    unneeded_pkg_list.append(pkg.strip())
+    unneeded_pkg_list.append(pkg)
 
 for pkg in run(["pacman", "-Qeq"]):
-    explicit_pkg_list.append(pkg.strip())
+    explicit_pkg_list.append(pkg)
 
 
 for pkg in keep_pkg_list:
