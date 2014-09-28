@@ -1,13 +1,13 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 
 import sys
 
 try:
-	needle = sys.argv[1]
-	haystack = sys.argv[2]
+    needle = sys.argv[1]
+    haystack = sys.argv[2]
 except IndexError:
-	print >>sys.stderr, "Usage: %s needle haystack" % sys.argv[0]
-	sys.exit(1)
+    print >>sys.stderr, "Usage: %s needle haystack" % sys.argv[0]
+    sys.exit(1)
 
 
 f = open(needle)
@@ -19,14 +19,14 @@ f = open(haystack)
 count = 0
 buf = ""
 while True:
-	newbuf = f.read(chunk_size)
-	if not newbuf:
-		break
-	buf += newbuf
-	pos = buf.find(magic)
-	if pos >= 0:
-		print "found", count + pos
-	count += len(buf) - len(magic)
-	buf = buf[-len(magic):]
+    newbuf = f.read(chunk_size)
+    if not newbuf:
+        break
+    buf += newbuf
+    pos = buf.find(magic)
+    if pos >= 0:
+        print "found", count + pos
+    count += len(buf) - len(magic)
+    buf = buf[-len(magic):]
 f.close()
 

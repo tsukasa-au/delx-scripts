@@ -102,23 +102,23 @@ xul-ext-ubufox
 # Preflight checks #
 ####################
 
-if [ "$(lsb_release -r | cut -d ':' -f 2 | tr -d '	 ')" != "$RELEASE" ]; then
-	echo "Sorry, at the moment this script only supports Ubuntu $RELEASE"
-	exit 1
+if [ "$(lsb_release -r | cut -d ':' -f 2 | tr -d '   ')" != "$RELEASE" ]; then
+    echo "Sorry, at the moment this script only supports Ubuntu $RELEASE"
+    exit 1
 fi
 
 if ! grep -q universe /etc/apt/sources.list /etc/apt/sources.list.d/*.list; then
-	echo "You must enable universe in your apt sources.list"
-	exit 1
+    echo "You must enable universe in your apt sources.list"
+    exit 1
 fi
 
 if ! grep -q multiverse /etc/apt/sources.list /etc/apt/sources.list.d/*.list; then
-	echo "You must enable multiverse in your apt sources.list"
-	exit 1
+    echo "You must enable multiverse in your apt sources.list"
+    exit 1
 fi
 
 if ! which equivs-build > /dev/null; then
-	sudo apt-get install equivs
+    sudo apt-get install equivs
 fi
 
 
@@ -144,11 +144,11 @@ Description: Customised Ubuntu desktop system
 EOT
 
 function get_line {
-	line="$(apt-cache show ubuntu-desktop | grep "$1:")"
-	for pkg in $EXCLUDE; do
-		line="$(echo "$line" | sed -e "s/$pkg, //" -e "s/, $pkg\$//")"
-	done
-	echo -n "$line"
+    line="$(apt-cache show ubuntu-desktop | grep "$1:")"
+    for pkg in $EXCLUDE; do
+        line="$(echo "$line" | sed -e "s/$pkg, //" -e "s/, $pkg\$//")"
+    done
+    echo -n "$line"
 }
 
 (

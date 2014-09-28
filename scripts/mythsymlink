@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 
 import MySQLdb
 import os
@@ -12,27 +12,27 @@ os.chdir(sys.argv[1])
 
 # Remove any symlinks and empty dirs in the tree
 for dirpath, dirnames, filenames in os.walk(".", topdown=False):
-	for filename in filenames:
-		filename = os.path.join(dirpath, filename)
-		if os.path.islink(filename):
-			os.unlink(filename)
-	for dirname in dirnames:
-		dirname = os.path.join(dirpath, dirname)
-		os.rmdir(dirname)
+    for filename in filenames:
+        filename = os.path.join(dirpath, filename)
+        if os.path.islink(filename):
+            os.unlink(filename)
+    for dirname in dirnames:
+        dirname = os.path.join(dirpath, dirname)
+        os.rmdir(dirname)
 
 # Connect to the MythTV database based on the MythTV config
 config_values = {}
 for line in open(os.path.expanduser("~/.mythtv/mysql.txt")):
-	line = line.strip()
-	if line and not line.startswith("#"):
-		(key, value) = line.split("=")
-		config_values[key] = value
+    line = line.strip()
+    if line and not line.startswith("#"):
+        (key, value) = line.split("=")
+        config_values[key] = value
 
 db_connection = MySQLdb.connect(
-	host = config_values["DBHostName"],
-	user = config_values["DBUserName"],
-	passwd = config_values["DBPassword"],
-	db = config_values["DBName"]
+    host = config_values["DBHostName"],
+    user = config_values["DBUserName"],
+    passwd = config_values["DBPassword"],
+    db = config_values["DBName"]
 )
 cursor = db_connection.cursor(MySQLdb.cursors.DictCursor)
 
@@ -41,45 +41,45 @@ unsafe = re.compile("[^a-zA-Z0-9\-_ ,\\.]+")
 
 # Find the recordings directory
 cursor.execute("""
-	SELECT * FROM settings
-	WHERE value='RecordFilePrefix' AND hostname='%s'
+    SELECT * FROM settings
+    WHERE value='RecordFilePrefix' AND hostname='%s'
 """ % socket.gethostname())
 recordingsdir = cursor.fetchone()["data"]
 
 # Now find all the recordings we have at the moment
 cursor.execute("""
-	SELECT title, subtitle, starttime, basename, watched FROM recorded
+    SELECT title, subtitle, starttime, basename, watched FROM recorded
 """)
 for row in cursor:
-	title = row["title"]
-	starttime = str(row["starttime"]).replace(":", "-")
-	subtitle = row["subtitle"]
-	basename = row["basename"]
-	watched = bool(row["watched"])
+    title = row["title"]
+    starttime = str(row["starttime"]).replace(":", "-")
+    subtitle = row["subtitle"]
+    basename = row["basename"]
+    watched = bool(row["watched"])
 
-	title = unsafe.sub("", title)
-	subtitle = unsafe.sub("", subtitle)
-	extn = os.path.splitext(basename)[1]
+    title = unsafe.sub("", title)
+    subtitle = unsafe.sub("", subtitle)
+    extn = os.path.splitext(basename)[1]
 
 
-	if subtitle:
-		filename = "%s - %s%s" % (starttime, subtitle, extn)
-	else:
-		filename = "%s%s" % (starttime, extn)
-	if watched:
-		filename = "watched/" + filename
+    if subtitle:
+        filename = "%s - %s%s" % (starttime, subtitle, extn)
+    else:
+        filename = "%s%s" % (starttime, extn)
+    if watched:
+        filename = "watched/" + filename
 
-	source = "%s/%s" % (recordingsdir, basename)
-	dest = "%s/%s" % (title, filename)
+    source = "%s/%s" % (recordingsdir, basename)
+    dest = "%s/%s" % (title, filename)
 
-	if not os.path.isfile(source):
-		continue
+    if not os.path.isfile(source):
+        continue
 
-	dirnames = dest.split("/")[:-1]
-	for i in xrange(1, len(dirnames)+1):
-		dirname = "/".join(dirnames[:i])
-		if not os.path.isdir(dirname):
-			os.mkdir(dirname)
+    dirnames = dest.split("/")[:-1]
+    for i in xrange(1, len(dirnames)+1):
+        dirname = "/".join(dirnames[:i])
+        if not os.path.isdir(dirname):
+            os.mkdir(dirname)
 
-	os.symlink(source, dest)
+    os.symlink(source, dest)
 
