@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 from __future__ import division
 
@@ -27,13 +27,13 @@ def check_path(path):
         warn = True
 
     if warn:
-        print "WARNING! %s has only %s remaining" % (path, pp_size(free))
+        print("WARNING! %s has only %s remaining" % (path, pp_size(free)))
 
 
 def main():
     paths = sys.argv[1:]
     if not paths:
-        print >>sys.stderr, "Usage: %s path" % sys.argv[0]
+        print("Usage: %s path" % sys.argv[0])
         sys.exit(1)
     for path in paths:
         check_path(path)
