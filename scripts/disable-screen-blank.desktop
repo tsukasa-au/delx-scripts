@@ -1,0 +1,11 @@
+[Desktop Entry]
+Encoding=UTF-8
+Version=0.9.4
+Type=Application
+Name=Disable screen blanking
+Comment=
+Exec=/bin/sh -c 'xset -dpms; xset s off'
+StartupNotify=false
+Terminal=false
+Hidden=false
+
