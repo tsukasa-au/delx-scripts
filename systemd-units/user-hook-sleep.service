@@ -1,0 +1,10 @@
+[Unit]
+Description=User hook for sleep action
+Before=sleep.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/xuserrun bash -c '. ~/.bashrc && ~/.hooks/sleep'
+
+[Install]
+WantedBy=sleep.target
