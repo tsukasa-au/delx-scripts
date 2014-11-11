@@ -5,11 +5,11 @@ local_hostname="${hostname}.localnet"
 public_hostname="p${hostname}"
 
 if grep -q "^Host ${hostname}$" ~/.ssh/config; then
-	true
+    true
 elif ping -c1 -t1 "$local_hostname" &> /dev/null; then
-	hostname="$local_hostname"
+    hostname="$local_hostname"
 else
-	hostname="$public_hostname"
+    hostname="$public_hostname"
 fi
 
 exec ssh "$hostname" "$@" -t "bash --login -c 'screen -dR'"

@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if ! [[ "$1" =~ xt=urn:btih:([^&/]+) ]]; then
+    echo "Invalid magnet link"
+    exit 1
+fi
+
+filename="$(echo "$1" | sed -e 's/.*dn=//' -e 's/&.*//').torrent"
+echo "d10:magnet-uri${#1}:${1}e" > "$filename"
+chmod 0644 "$filename"
+
+echo "created $filename"

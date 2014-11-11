@@ -1,0 +1,5 @@
+#!/bin/bash -e
+
+cd ~/.config/banshee-1
+sqlite3 banshee.db "UPDATE CoreTracks SET LastSyncedStamp = 0"
+

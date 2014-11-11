@@ -1,0 +1,18 @@
+#!/bin/bash
+
+if [ -z "$1" -o -z "$2" ]; then
+    echo "Usage: $0 src dest"
+    exit 1
+fi
+
+src="$1"
+dest="$2"
+mkdir -p "$dest"
+dest="$(cd "$dest" && pwd)"
+
+cd "$src"
+find . -name '*.class' | while read line; do
+    class="$(echo "$line"| sed -e 's|^\./||' -e 's|\.class$||' -e 's|/|.|g')"
+    javap -private -c "$class" > "${dest}/${class}.txt"
+done
+
