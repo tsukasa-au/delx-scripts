@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-
-if test '!' -c /dev/fd/1; then
-	/bin/ps "$@" -ww
-else
-	/bin/ps "$@"
-fi

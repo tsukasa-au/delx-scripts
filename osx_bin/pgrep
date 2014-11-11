@@ -1,4 +1,0 @@
-#!/bin/sh
-
-ps -A -o pid=,command= | grep "$1" | awk '{print $1;}' | grep -v $$
-
