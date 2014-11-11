@@ -31,15 +31,15 @@ escape() {
   done;
 }
 
-active_session="$(loginctl show-seat ${seat}|grep ActiveSession|cut -d= -f2)"
-if [[ $? -ne 0 || -z $active_session ]]; then
-echo "Error: Unable to determine active session"
+active_session="$(loginctl --no-legend | grep "$seat" | tail -n1 | awk '{print $1}')"
+if [[ $? -ne 0 || -z "$active_session" ]]; then
+  echo "Error: Unable to determine active session"
   exit 1
 fi
 
-get_session_info $active_session session_info
+get_session_info "$active_session" session_info
 
-if [[ ${session_info[Type]} != "x11" ]]; then
+if [[ "${session_info[Type]}" != "x11" ]]; then
 echo "Error: Active session is not x11"
   exit 2
 fi
