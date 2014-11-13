@@ -170,7 +170,10 @@ int read_mem_percent() {
 
 int read_battery_percent() {
     char* percent_str = NULL;
-    for (int i = 0; i <= 1 && percent_str == NULL; ++i) {
+    if (percent_str == NULL) {
+        percent_str = read_file("/sys/class/power_supply/BAT0/capacity");
+    }
+    if (percent_str == NULL) {
         percent_str = read_file("/sys/class/power_supply/BAT1/capacity");
     }
     return parse_int(percent_str);
