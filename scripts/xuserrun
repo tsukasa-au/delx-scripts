@@ -1,4 +1,5 @@
 #!/bin/bash
+# vim:ts=2:sts=2:sw=2
 
 #
 # Run a command as the currently active X11 user
@@ -9,7 +10,7 @@ seat="seat0"
 # determine location of loginctl
 LOGINCTL=$(command -v loginctl || command -v systemd-loginctl)
 if [[ -e LOGINCTL ]]; then
-echo "Error: Unable to find loginctl executable"
+  echo "Error: Unable to find loginctl executable"
   exit 1
 fi
 
@@ -31,16 +32,22 @@ escape() {
   done;
 }
 
-active_session="$(loginctl --no-legend | grep "$seat" | tail -n1 | awk '{print $1}')"
-if [[ $? -ne 0 || -z "$active_session" ]]; then
+session_list="$(loginctl --no-legend | grep "$seat" | awk '{print $1}')"
+found_active_session=""
+for session in $session_list; do
+  get_session_info "$session" session_info
+  if [[ "${session_info[Active]}" = "yes" ]]; then
+    found_active_session="yes"
+    break
+  fi
+done
+if [ -z "${found_active_session}" ]; then
   echo "Error: Unable to determine active session"
   exit 1
 fi
 
-get_session_info "$active_session" session_info
-
 if [[ "${session_info[Type]}" != "x11" ]]; then
-echo "Error: Active session is not x11"
+  echo "Error: Active session is not x11"
   exit 2
 fi
 
