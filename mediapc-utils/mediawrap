@@ -23,15 +23,23 @@ if [ "$1" = "--max-volume" ]; then
         done
 fi
 
-# Switch volume keys to F9/F10 with xmodmap
+# Switch volume keys to F8/F9/F10 with xmodmap
 if [ "$1" = "--switch-volume-keys" ]; then
     echo "switch volume"
     switch_volume=1
     shift
-    xmodmap -e 'keycode 122 = F9'
-    xmodmap -e 'keycode 123 = F10'
+    xmodmap -e 'keycode 121 = F8'  # Mute
+    xmodmap -e 'keycode 122 = F9'  # VolDown
+    xmodmap -e 'keycode 123 = F10' # VolUp
 fi
 
+# Stop XFCE4 volume control
+if [ "$1" = "--pause-xfce4-volumed" ]; then
+    echo "killall xfce4-volumed-pulse"
+    pause_xfce4_volumed=1
+    shift
+    killall xfce4-volumed-pulse
+fi
 
 # Run the program
 "$@" &> /dev/null
@@ -44,8 +52,14 @@ fi
 
 # Restore volume keys
 if [ -n "$switch_volume" ]; then
+    xmodmap -e 'keycode 121 = XF86AudioMute'
     xmodmap -e 'keycode 122 = XF86AudioLowerVolume'
     xmodmap -e 'keycode 123 = XF86AudioRaiseVolume'
+fi
+
+# Restore volume keys
+if [ -n "$pause_xfce4_volumed" ]; then
+    xfce4-volumed-pulse
 fi
 
 ) 200>"$LOCKFILE"
