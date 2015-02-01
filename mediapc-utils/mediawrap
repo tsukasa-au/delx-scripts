@@ -24,13 +24,13 @@ if [ "$1" = "--max-volume" ]; then
 fi
 
 # Switch volume keys to F8/F9/F10 with xmodmap
-if [ "$1" = "--switch-volume-keys" ]; then
-    echo "switch volume"
-    switch_volume=1
+if [ "$1" = "--pause-gnome-volume" ]; then
+    echo "disable gnome volume"
+    pause_gnome_volume=1
     shift
-    xmodmap -e 'keycode 121 = F8'  # Mute
-    xmodmap -e 'keycode 122 = F9'  # VolDown
-    xmodmap -e 'keycode 123 = F10' # VolUp
+    gsettings set org.gnome.settings-daemon.plugins.media-keys volume-mute ''
+    gsettings set org.gnome.settings-daemon.plugins.media-keys volume-down ''
+    gsettings set org.gnome.settings-daemon.plugins.media-keys volume-up ''
 fi
 
 # Stop XFCE4 volume control
@@ -51,10 +51,10 @@ if [ -n "$max_volume" ]; then
 fi
 
 # Restore volume keys
-if [ -n "$switch_volume" ]; then
-    xmodmap -e 'keycode 121 = XF86AudioMute'
-    xmodmap -e 'keycode 122 = XF86AudioLowerVolume'
-    xmodmap -e 'keycode 123 = XF86AudioRaiseVolume'
+if [ -n "$pause_gnome_volume" ]; then
+    gsettings set org.gnome.settings-daemon.plugins.media-keys volume-mute 'XF86AudioMute'
+    gsettings set org.gnome.settings-daemon.plugins.media-keys volume-down 'XF86AudioLowerVolume'
+    gsettings set org.gnome.settings-daemon.plugins.media-keys volume-up 'XF86AudioRaiseVolume'
 fi
 
 # Restore volume keys
