@@ -1,0 +1,7 @@
+#!/bin/bash
+
+for pid in $(sudo lsof +c 0 / | grep DEL | awk '{print $2}'); do
+    echo -n "sudo systemctl restart "
+    systemctl status "$pid" | head -n1 | awk '{print $2}'
+done
+
