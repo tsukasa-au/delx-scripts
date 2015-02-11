@@ -1,7 +1,14 @@
 #!/bin/bash
 
-for pid in $(sudo lsof +c 0 / | grep DEL | awk '{print $2}'); do
-    echo -n "sudo systemctl restart "
-    systemctl status "$pid" | head -n1 | awk '{print $2}'
-done
+for pid in $(sudo lsof +c 0 / | grep DEL | awk '{print $2}' | sort -u); do
+    if [ "$pid" = 1 ]; then
+        echo "sudo systemctl daemon-reexec"
+        exit 0
+    fi
+
+    service="$(systemctl status "$pid" | head -n1 | awk '{print $2}')"
+    if [ -n "$service" ]; then
+        echo "sudo systemctl restart $service"
+    fi
+done | sort -u
 
