@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 import cherrypy
 import os
@@ -8,14 +8,14 @@ import webbrowser
 class Listener(object):
     @cherrypy.expose
     def firefox(self, url):
-        print "Loading:", url
+        print("Loading:", url)
         webbrowser.open(url)
         raise cherrypy.HTTPRedirect(url, status=303)
 
 def do_fork():
     pid = os.fork()
     if pid < 0:
-        print >>sys.stderr, "Unable to fork!"
+        print("Unable to fork!", file=sys.stderr)
         sys.exit(1)
     if pid != 0:
         sys.exit(0)
@@ -34,7 +34,7 @@ if __name__ == "__main__":
         if sys.argv[1] == "--fork":
             fork = True
         else:
-            print >>sys.stderr, "Usage: %s [--fork]" % sys.argv[0]
+            print("Usage: %s [--fork]" % sys.argv[0], file=sys.stderr)
             sys.exit(1)
     main(fork)
 
