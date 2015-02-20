@@ -1,0 +1,260 @@
+#!/usr/bin/python3
+
+import argparse
+import csv
+import datetime
+import getpass
+import itertools
+import lxml.html
+import os
+import pickle
+import re
+import requests
+import sys
+
+
+VERSION = 3
+
+CACHE_DIR = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache/opal-card-tool"))
+PICKLE_FILE = os.path.join(CACHE_DIR, "pickle")
+
+OPAL_BASE = "https://www.opal.com.au"
+LOGIN_URL = OPAL_BASE + "/login/registeredUserUsernameAndPasswordLogin"
+CARD_DETAILS_URL = OPAL_BASE + "/registered/getJsonCardDetailsArray"
+TRANSACTION_LIST_URL = OPAL_BASE + "/registered/opal-card-transactions/opal-card-activities-list?AMonth=-1&AYear=-1&cardIndex=%d&pageIndex=%d"
+
+class FatalError(Exception):
+    pass
+
+class Card(object):
+    def __init__(self):
+        self.transaction_list = []
+
+    def get_max_transaction(self):
+        if self.transaction_list:
+            return self.transaction_list[0].number
+        else:
+            return -1
+
+class Transaction(object):
+    pass
+
+def stringify(el):
+    return " ".join(t.strip() for t in el.itertext()).strip()
+
+def get_first(l):
+    for x in l:
+        return x
+
+class Opal(object):
+    def __init__(self, username, password):
+        self.version = VERSION
+        self.username = username
+        self.password = password
+
+        self.session = requests.Session()
+        self.cards = []
+
+    def login(self):
+        r = self.session.post(LOGIN_URL, {
+            "h_username": self.username,
+            "h_password": self.password,
+        })
+        if not r.ok:
+            raise Exception("Failed to login, error code: %d" % r.status_code)
+
+        json = r.json()
+        if json["errorMessage"]:
+            raise Exception("Failed to login: %s" % json["errorMessage"])
+
+    def load(self):
+        self.load_cards()
+        for card in self.cards:
+            self.load_transactions(card)
+
+    def load_cards(self):
+        r = self.session.get(CARD_DETAILS_URL)
+        if not r.ok:
+            raise Exception("Failed to login, error code: %d" % r.status_code)
+
+        for index, card_json in enumerate(r.json()):
+            card_number = card_json["cardNumber"]
+
+            for card in self.cards:
+                if card.number == card_number:
+                    break
+            else:
+                card = Card()
+                self.cards.append(card)
+
+            card.number = card_number
+            card.name = card_json["cardNickName"]
+            card.index = index
+
+    def load_transactions(self, card):
+        print("Loading transactions for", card.number, "", end="", flush=True)
+        max_transaction = card.get_max_transaction()
+
+        for page in itertools.count(1):
+            print(".", end="", flush=True)
+            transactions = self.fetch_transaction_page(card.index, page)
+
+            if not transactions:
+                print(" done")
+                return
+
+            for transaction in transactions:
+                if transaction.number <= max_transaction:
+                    print(" done")
+                    return
+
+                card.transaction_list.append(transaction)
+
+    def parse_transaction(self, cells):
+        t = Transaction()
+        t.number = int(stringify(cells["transaction number"]))
+        t.timestamp = datetime.datetime.strptime(stringify(cells["date/time"]), "%a %d/%m/%Y %H:%M")
+        t.mode = get_first(cells["mode"].xpath("img/@alt"))
+        t.details = stringify(cells["details"])
+        t.journey_number = stringify(cells["journey number"])
+        t.fare_applied = stringify(cells["fare applied"])
+        t.fare = stringify(cells["fare"])
+        t.fare_discount = stringify(cells["discount"])
+        t.amount = stringify(cells["amount"])
+        return t
+
+    def fetch_transaction_page(self, card, page):
+        url = TRANSACTION_LIST_URL % (card, page)
+        r = self.session.get(url)
+        if not r.ok:
+            raise Exception("Failed to fetch transactions, error code: %d" % r.status_code)
+
+        doc = lxml.html.fromstring(r.text)
+        headers = [stringify(th).lower() for th in doc.xpath("//table/thead//th")]
+
+        if not headers:
+            return []
+
+        result = []
+        for tr in doc.xpath("//table/tbody/tr"):
+            try:
+                transaction = self.parse_transaction(dict(zip(headers, tr.getchildren())))
+                result.append(transaction)
+            except Exception:
+                print("Failed to parse:", headers, lxml.html.tostring(tr))
+                raise
+        return result
+
+
+def print_transaction_list(opal, card_number, filter_details):
+    for card in opal.cards:
+        if card.number == card_number:
+            break
+    else:
+        return
+
+    if not card.transaction_list:
+        return
+
+    headers = []
+    headers.extend(["number", "timestamp"])
+    headers.extend(h for h in sorted(card.transaction_list[0].__dict__.keys()) if h not in headers)
+
+    out = csv.DictWriter(sys.stdout, headers)
+    out.writeheader()
+    for transaction in card.transaction_list:
+        details = transaction.details
+        if not filter_details or re.search(filter_details, details):
+            out.writerow(transaction.__dict__)
+
+
+def print_cards(opal):
+    for card in opal.cards:
+        print("Card")
+        print("  number:", card.number)
+        print("  name:", card.name)
+        print("  transactions:", len(card.transaction_list))
+        print()
+
+def try_unpickle():
+    if not os.path.isfile(PICKLE_FILE):
+        return None
+
+    with open(PICKLE_FILE, "rb") as f:
+        return pickle.load(f)
+
+def save_pickle(opal):
+    if not os.path.isdir(CACHE_DIR):
+        os.makedirs(CACHE_DIR)
+    with open(PICKLE_FILE, "wb") as f:
+        pickle.dump(opal, f)
+
+
+
+def upgrade_opal_v2(opal):
+    # example upgrade!
+    opal.version = 3
+
+def upgrade_opal(opal):
+    while opal.version < VERSION:
+        print("Upgrading from version", opal.version)
+        upgrade_func = globals()["upgrade_opal_v%d" % opal.version]
+        upgrade_func(opal)
+
+
+
+def load_opal():
+    opal = try_unpickle()
+
+    if opal:
+        upgrade_opal(opal)
+    else:
+        username = input("Username: ")
+        password = getpass.getpass()
+        opal = Opal(username, password)
+
+    save_pickle(opal)
+    return opal
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Opal card activity fetcher")
+
+    parser.add_argument("--show-cards", action="store_true",
+        help="show a list of cards"
+    )
+    parser.add_argument("--show-transactions",
+        help="show transactions for card"
+    )
+    parser.add_argument("--filter",
+        help="filter transaction details with this regex"
+    )
+    parser.add_argument("--load", action="store_true",
+        help="load any new data from the Opal website"
+    )
+
+    args = parser.parse_args()
+
+    if not args.show_cards and not args.show_transactions and not args.load:
+        parser.print_help()
+        sys.exit(1)
+
+    return args
+
+def main():
+    args = parse_args()
+    opal = load_opal()
+
+    if args.load:
+        opal.login()
+        opal.load()
+        save_pickle(opal)
+
+    if args.show_cards:
+        print_cards(opal)
+
+    if args.show_transactions:
+        print_transaction_list(opal, args.show_transactions, args.filter)
+
+if __name__ == "__main__":
+    main()
+
