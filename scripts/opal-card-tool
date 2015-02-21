@@ -36,6 +36,9 @@ class Card(object):
         else:
             return -1
 
+    def add_transactions(self, l):
+        self.transaction_list = l + self.transaction_list
+
 class Transaction(object):
     pass
 
@@ -94,21 +97,26 @@ class Opal(object):
     def load_transactions(self, card):
         print("Loading transactions for", card.number, "", end="", flush=True)
         max_transaction = card.get_max_transaction()
+        transaction_list = []
 
         for page in itertools.count(1):
             print(".", end="", flush=True)
-            transactions = self.fetch_transaction_page(card.index, page)
+            transaction_page = self.fetch_transaction_page(card.index, page)
+            continue_paging = False
 
-            if not transactions:
-                print(" done")
-                return
-
-            for transaction in transactions:
+            for transaction in transaction_page:
                 if transaction.number <= max_transaction:
-                    print(" done")
-                    return
+                    continue_paging = False
+                    break
 
-                card.transaction_list.append(transaction)
+                transaction_list.append(transaction)
+                continue_paging = True
+
+            if not continue_paging:
+                break
+
+        print(" done")
+        card.add_transactions(transaction_list)
 
     def parse_transaction(self, cells):
         t = Transaction()
@@ -135,15 +143,12 @@ class Opal(object):
         if not headers:
             return []
 
-        result = []
         for tr in doc.xpath("//table/tbody/tr"):
             try:
-                transaction = self.parse_transaction(dict(zip(headers, tr.getchildren())))
-                result.append(transaction)
+                yield self.parse_transaction(dict(zip(headers, tr.getchildren())))
             except Exception:
                 print("Failed to parse:", headers, lxml.html.tostring(tr))
                 raise
-        return result
 
 
 def print_transaction_list(opal, card_number, filter_details):
