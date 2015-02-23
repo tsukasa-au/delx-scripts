@@ -203,6 +203,7 @@ class CommuterGraph(object):
 
     def write_points(self, transaction_list):
         oldest = datetime.datetime.now() - datetime.timedelta(days=12)
+        oldest = oldest.replace(hour=0, minute=0, second=0, microsecond=0)
         for transaction in transaction_list:
             ts = transaction.timestamp
             if ts < oldest:
