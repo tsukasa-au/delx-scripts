@@ -8,9 +8,10 @@ import itertools
 import lxml.html
 import os
 import pickle
-import re
 import requests
+import subprocess
 import sys
+import tempfile
 
 
 VERSION = 3
@@ -23,7 +24,23 @@ LOGIN_URL = OPAL_BASE + "/login/registeredUserUsernameAndPasswordLogin"
 CARD_DETAILS_URL = OPAL_BASE + "/registered/getJsonCardDetailsArray"
 TRANSACTION_LIST_URL = OPAL_BASE + "/registered/opal-card-transactions/opal-card-activities-list?AMonth=-1&AYear=-1&cardIndex=%d&pageIndex=%d"
 
+
+
+def stringify(el):
+    return " ".join(t.strip() for t in el.itertext()).strip()
+
+def get_first(l):
+    for x in l:
+        return x
+
+def is_weekday(d):
+    return d.isoweekday() <= 5
+
+
 class FatalError(Exception):
+    pass
+
+class Transaction(object):
     pass
 
 class Card(object):
@@ -38,16 +55,6 @@ class Card(object):
 
     def add_transactions(self, l):
         self.transaction_list = l + self.transaction_list
-
-class Transaction(object):
-    pass
-
-def stringify(el):
-    return " ".join(t.strip() for t in el.itertext()).strip()
-
-def get_first(l):
-    for x in l:
-        return x
 
 class Opal(object):
     def __init__(self, username, password):
@@ -74,6 +81,14 @@ class Opal(object):
         self.load_cards()
         for card in self.cards:
             self.load_transactions(card)
+
+    def get_transaction_list_for_card(self, card_number):
+        if int(card_number) < len(self.cards):
+            return self.cards[int(card_number)].transaction_list
+
+        for card in self.cards:
+            if card.number == card_number:
+                return card.transaction_list
 
     def load_cards(self):
         r = self.session.get(CARD_DETAILS_URL)
@@ -151,26 +166,111 @@ class Opal(object):
                 raise
 
 
-def print_transaction_list(opal, card_number, filter_details):
-    for card in opal.cards:
-        if card.number == card_number:
-            break
-    else:
-        return
+class CommuterGraph(object):
+    class gnuplot_dialect(csv.excel):
+        delimiter = " "
 
-    if not card.transaction_list:
-        return
+    def __init__(self):
+        self.data_am_csv, self.data_am_file = self.new_csv()
+        self.data_pm_csv, self.data_pm_file = self.new_csv()
+        self.plot_file = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8")
+        self.files = [self.data_am_file, self.data_pm_file, self.plot_file]
 
+    def graph(self, transaction_list):
+        try:
+            self.write_points(transaction_list)
+            self.write_plot_command()
+            self.flush_files()
+            self.run_gnuplot()
+        finally:
+            self.cleanup()
+
+    def new_csv(self):
+        f = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8")
+        out = csv.writer(f, dialect=self.gnuplot_dialect)
+        return out, f
+
+    def write_points(self, transaction_list):
+        oldest = datetime.datetime.now() - datetime.timedelta(days=12)
+        for transaction in transaction_list:
+            ts = transaction.timestamp
+            if ts < oldest:
+                return
+            if not is_weekday(ts):
+                continue
+
+            x_date = ts.strftime("%Y-%m-%dT00:00:00")
+            y_time = ts.strftime("2000-01-01T%H:%M:00")
+            y_label = ts.strftime("%H:%M")
+            row = [x_date, y_time, y_label]
+
+            if ts.time() < datetime.time(12):
+                out_csv = self.data_am_csv
+            else:
+                out_csv = self.data_pm_csv
+            out_csv.writerow(row)
+
+        self.data_am_file.flush()
+        self.data_pm_file.flush()
+
+    def write_plot_command(self):
+        d = {
+            "data_am_filename": self.data_am_file.name,
+            "data_pm_filename": self.data_pm_file.name,
+        }
+        self.plot_file.write("""
+set timefmt "%Y-%m-%dT%H:%M:%S"
+
+set xlabel "Date"
+set xdata time
+set format x "%b %d"
+set xtics 86400
+
+set ylabel "Time"
+set ydata time
+set format y "%H:%M"
+set yrange [ "2000-01-01T06:00:00" : "2000-01-01T23:00:00" ]
+
+set key box opaque 
+
+plot \\
+    '{data_am_filename}' using 1:2 with line title 'Morning departure time', \\
+    '{data_am_filename}' using 1:2:3 with labels offset 0,1 notitle, \\
+    '{data_pm_filename}' using 1:2 with line title 'Afternoon departure time', \\
+    '{data_pm_filename}' using 1:2:3 with labels offset 0,1 notitle
+""".format(**d))
+
+    def flush_files(self):
+        for f in self.files:
+            f.flush()
+
+    def cleanup(self):
+        for f in self.files:
+            try:
+                f.close()
+            except:
+                pass
+
+    def run_gnuplot(self):
+        subprocess.check_call([
+            "gnuplot",
+            "-persist",
+            self.plot_file.name,
+        ])
+
+def graph_commuter(transaction_list):
+    g = CommuterGraph()
+    g.graph(transaction_list)
+
+def print_transaction_list(transaction_list):
     headers = []
     headers.extend(["number", "timestamp"])
-    headers.extend(h for h in sorted(card.transaction_list[0].__dict__.keys()) if h not in headers)
+    headers.extend(h for h in sorted(transaction_list[0].__dict__.keys()) if h not in headers)
 
     out = csv.DictWriter(sys.stdout, headers)
     out.writeheader()
-    for transaction in card.transaction_list:
-        details = transaction.details
-        if not filter_details or re.search(filter_details, details):
-            out.writerow(transaction.__dict__)
+    for transaction in transaction_list:
+        out.writerow(transaction.__dict__)
 
 
 def print_cards(opal):
@@ -224,24 +324,21 @@ def load_opal():
 def parse_args():
     parser = argparse.ArgumentParser(description="Opal card activity fetcher")
 
-    parser.add_argument("--show-cards", action="store_true",
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--load", action="store_true",
+        help="load any new data from the Opal website"
+    )
+    group.add_argument("--show-cards", action="store_true",
         help="show a list of cards"
     )
-    parser.add_argument("--show-transactions",
+    group.add_argument("--show-transactions", metavar="CARD_NUMBER",
         help="show transactions for card"
     )
-    parser.add_argument("--filter",
-        help="filter transaction details with this regex"
-    )
-    parser.add_argument("--load", action="store_true",
-        help="load any new data from the Opal website"
+    group.add_argument("--graph-commuter", metavar="CARD_NUMBER",
+        help="draw commuter graph for card with gnuplot"
     )
 
     args = parser.parse_args()
-
-    if not args.show_cards and not args.show_transactions and not args.load:
-        parser.print_help()
-        sys.exit(1)
 
     return args
 
@@ -258,7 +355,10 @@ def main():
         print_cards(opal)
 
     if args.show_transactions:
-        print_transaction_list(opal, args.show_transactions, args.filter)
+        print_transaction_list(opal.get_transaction_list_for_card(args.show_transactions))
+
+    if args.graph_commuter:
+        graph_commuter(opal.get_transaction_list_for_card(args.graph_commuter))
 
 if __name__ == "__main__":
     main()
