@@ -173,8 +173,11 @@ class CommuterGraph(object):
     def __init__(self):
         self.data_am_csv, self.data_am_file = self.new_csv()
         self.data_pm_csv, self.data_pm_file = self.new_csv()
-        self.plot_file = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8")
+        self.plot_file = self.new_tempfile()
         self.files = [self.data_am_file, self.data_pm_file, self.plot_file]
+
+        self.xrange_start = None
+        self.xrange_end = None
 
     def graph(self, transaction_list):
         try:
@@ -185,8 +188,16 @@ class CommuterGraph(object):
         finally:
             self.cleanup()
 
+    def new_tempfile(self):
+        return tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            prefix="opal-card-tool-",
+            delete=True,
+        )
+
     def new_csv(self):
-        f = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8")
+        f = self.new_tempfile()
         out = csv.writer(f, dialect=self.gnuplot_dialect)
         return out, f
 
@@ -198,6 +209,11 @@ class CommuterGraph(object):
                 return
             if not is_weekday(ts):
                 continue
+
+            if self.xrange_start is None or ts < self.xrange_start:
+                self.xrange_start = ts
+            if self.xrange_end is None or ts > self.xrange_end:
+                self.xrange_end = ts
 
             x_date = ts.strftime("%Y-%m-%dT00:00:00")
             y_time = ts.strftime("2000-01-01T%H:%M:00")
@@ -217,27 +233,53 @@ class CommuterGraph(object):
         d = {
             "data_am_filename": self.data_am_file.name,
             "data_pm_filename": self.data_pm_file.name,
+            "xrange_start": self.xrange_start - datetime.timedelta(hours=24),
+            "xrange_end": self.xrange_end + datetime.timedelta(hours=24),
         }
-        self.plot_file.write("""
-set timefmt "%Y-%m-%dT%H:%M:%S"
+        self.plot_file.write(R"""
+set timefmt '%Y-%m-%dT%H:%M:%S'
 
-set xlabel "Date"
+set xlabel 'Date'
 set xdata time
-set format x "%b %d"
-set xtics 86400
+set format x '%a %d'
+set xtics 86400 scale 1.0,0.0
+set xrange [ '{xrange_start}' : '{xrange_end}' ]
 
-set ylabel "Time"
+set ylabel 'Time'
 set ydata time
-set format y "%H:%M"
-set yrange [ "2000-01-01T06:00:00" : "2000-01-01T23:00:00" ]
+set format y '%H:%M'
+set yrange [ '2000-01-01T06:00:00' : '2000-01-01T23:00:00' ]
 
 set key box opaque 
+set terminal qt \
+    persist \
+    title 'opal-card-tool graph' \
+    font 'Sans,10' \
+    enhanced \
+    size 1000,700
 
-plot \\
-    '{data_am_filename}' using 1:2 with line title 'Morning departure time', \\
-    '{data_am_filename}' using 1:2:3 with labels offset 0,1 notitle, \\
-    '{data_pm_filename}' using 1:2 with line title 'Afternoon departure time', \\
-    '{data_pm_filename}' using 1:2:3 with labels offset 0,1 notitle
+plot \
+    '{data_pm_filename}' \
+        using 1:2 \
+        with line \
+        title 'Afternoon departure time' \
+    , \
+    '{data_pm_filename}' \
+        using 1:2:3 \
+        with labels \
+        offset 0,1 \
+        notitle \
+    , \
+    '{data_am_filename}' \
+        using 1:2 \
+        with line \
+        title 'Morning departure time' \
+    , \
+    '{data_am_filename}' \
+        using 1:2:3 \
+        with labels \
+        offset 0,1 \
+        notitle \
 """.format(**d))
 
     def flush_files(self):
@@ -254,7 +296,6 @@ plot \\
     def run_gnuplot(self):
         subprocess.check_call([
             "gnuplot",
-            "-persist",
             self.plot_file.name,
         ])
 
