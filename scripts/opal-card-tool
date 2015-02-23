@@ -201,34 +201,44 @@ class CommuterGraph(object):
         out = csv.writer(f, dialect=self.gnuplot_dialect)
         return out, f
 
-    def write_points(self, transaction_list):
+    def get_oldest_date(self):
         oldest = datetime.datetime.now() - datetime.timedelta(days=12)
         oldest = oldest.replace(hour=0, minute=0, second=0, microsecond=0)
+        return oldest
+
+    def update_xrange(self, ts):
+        if self.xrange_start is None or ts < self.xrange_start:
+            self.xrange_start = ts
+        if self.xrange_end is None or ts > self.xrange_end:
+            self.xrange_end = ts
+
+    def generate_point(self, transaction):
+        ts = transaction.timestamp
+        x_date = ts.strftime("%Y-%m-%dT00:00:00")
+        y_time = ts.strftime("2000-01-01T%H:%M:00")
+        y_label = ts.strftime("%H:%M")
+        return [x_date, y_time, y_label]
+
+    def write_point(self, ts, point):
+        if ts.time() < datetime.time(12):
+            out_csv = self.data_am_csv
+        else:
+            out_csv = self.data_pm_csv
+
+        out_csv.writerow(point)
+
+    def write_points(self, transaction_list):
+        oldest_date = self.get_oldest_date()
+
         for transaction in transaction_list:
-            ts = transaction.timestamp
-            if ts < oldest:
+            if transaction.timestamp < oldest_date:
                 return
-            if not is_weekday(ts):
+            if not is_weekday(transaction.timestamp):
                 continue
 
-            if self.xrange_start is None or ts < self.xrange_start:
-                self.xrange_start = ts
-            if self.xrange_end is None or ts > self.xrange_end:
-                self.xrange_end = ts
-
-            x_date = ts.strftime("%Y-%m-%dT00:00:00")
-            y_time = ts.strftime("2000-01-01T%H:%M:00")
-            y_label = ts.strftime("%H:%M")
-            row = [x_date, y_time, y_label]
-
-            if ts.time() < datetime.time(12):
-                out_csv = self.data_am_csv
-            else:
-                out_csv = self.data_pm_csv
-            out_csv.writerow(row)
-
-        self.data_am_file.flush()
-        self.data_pm_file.flush()
+            self.update_xrange(transaction.timestamp)
+            point = self.generate_point(transaction)
+            self.write_point(transaction.timestamp, point)
 
     def write_plot_command(self):
         d = {
