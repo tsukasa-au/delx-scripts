@@ -274,8 +274,8 @@ def print_transaction_list(transaction_list):
 
 
 def print_cards(opal):
-    for card in opal.cards:
-        print("Card")
+    for i, card in enumerate(opal.cards):
+        print("Card", i)
         print("  number:", card.number)
         print("  name:", card.name)
         print("  transactions:", len(card.transaction_list))
