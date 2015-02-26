@@ -233,12 +233,19 @@ class CommuterGraph(object):
         for transaction in transaction_list:
             if transaction.timestamp < oldest_date:
                 return
-            if not is_weekday(transaction.timestamp):
+            if not self.is_commuter_transaction(transaction, oldest_date):
                 continue
 
             self.update_xrange(transaction.timestamp)
             point = self.generate_point(transaction)
             self.write_point(transaction.timestamp, point)
+
+    def is_commuter_transaction(self, transaction, oldest_date):
+        if not is_weekday(transaction.timestamp):
+            return False
+        if transaction.details.startswith("Auto top up"):
+            return False
+        return True
 
     def write_plot_command(self):
         d = {
@@ -413,5 +420,9 @@ def main():
         graph_commuter(opal.get_transaction_list_for_card(args.graph_commuter))
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (KeyboardInterrupt, BrokenPipeError) as e:
+        print("Exiting:", e, file=sys.stderr)
+        sys.exit(1)
 
