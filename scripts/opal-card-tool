@@ -36,6 +36,11 @@ def get_first(l):
 def is_weekday(d):
     return d.isoweekday() <= 5
 
+def n_days_ago(days):
+    d = datetime.datetime.now() - datetime.timedelta(days=days)
+    d = d.replace(hour=0, minute=0, second=0, microsecond=0)
+    return d
+
 
 class FatalError(Exception):
     pass
@@ -82,13 +87,18 @@ class Opal(object):
         for card in self.cards:
             self.load_transactions(card)
 
-    def get_transaction_list_for_card(self, card_number):
+    def resolve_card_number(self, card_number):
         if int(card_number) < len(self.cards):
-            return self.cards[int(card_number)].transaction_list
+            return self.cards[int(card_number)].number
+        else:
+            return card_number
 
+    def get_transaction_list_for_card(self, card_number):
         for card in self.cards:
             if card.number == card_number:
                 return card.transaction_list
+
+        return []
 
     def load_cards(self):
         r = self.session.get(CARD_DETAILS_URL)
@@ -162,7 +172,7 @@ class Opal(object):
             try:
                 yield self.parse_transaction(dict(zip(headers, tr.getchildren())))
             except Exception:
-                print("Failed to parse:", headers, lxml.html.tostring(tr))
+                print("Failed to parse:", headers, lxml.html.tostring(tr), file=sys.stderr)
                 raise
 
 
@@ -201,11 +211,6 @@ class CommuterGraph(object):
         out = csv.writer(f, dialect=self.gnuplot_dialect)
         return out, f
 
-    def get_oldest_date(self):
-        oldest = datetime.datetime.now() - datetime.timedelta(days=12)
-        oldest = oldest.replace(hour=0, minute=0, second=0, microsecond=0)
-        return oldest
-
     def update_xrange(self, ts):
         if self.xrange_start is None or ts < self.xrange_start:
             self.xrange_start = ts
@@ -228,19 +233,15 @@ class CommuterGraph(object):
         out_csv.writerow(point)
 
     def write_points(self, transaction_list):
-        oldest_date = self.get_oldest_date()
-
         for transaction in transaction_list:
-            if transaction.timestamp < oldest_date:
-                return
-            if not self.is_commuter_transaction(transaction, oldest_date):
+            if not self.is_commuter_transaction(transaction):
                 continue
 
             self.update_xrange(transaction.timestamp)
             point = self.generate_point(transaction)
             self.write_point(transaction.timestamp, point)
 
-    def is_commuter_transaction(self, transaction, oldest_date):
+    def is_commuter_transaction(self, transaction):
         if not is_weekday(transaction.timestamp):
             return False
         if transaction.details.startswith("Auto top up"):
@@ -317,6 +318,13 @@ plot \
             self.plot_file.name,
         ])
 
+def restrict_days(transaction_list, num_days):
+    oldest_date = n_days_ago(num_days)
+    for transaction in transaction_list:
+        if transaction.timestamp < oldest_date:
+            return
+        yield transaction
+
 def graph_commuter(transaction_list):
     g = CommuterGraph()
     g.graph(transaction_list)
@@ -330,7 +338,6 @@ def print_transaction_list(transaction_list):
     out.writeheader()
     for transaction in transaction_list:
         out.writerow(transaction.__dict__)
-
 
 def print_cards(opal):
     for i, card in enumerate(opal.cards):
@@ -361,7 +368,7 @@ def upgrade_opal_v2(opal):
 
 def upgrade_opal(opal):
     while opal.version < VERSION:
-        print("Upgrading from version", opal.version)
+        print("Upgrading from version", opal.version, file=sys.stderr)
         upgrade_func = globals()["upgrade_opal_v%d" % opal.version]
         upgrade_func(opal)
 
@@ -380,8 +387,56 @@ def load_opal():
     save_pickle(opal)
     return opal
 
+def do_load():
+    opal = load_opal()
+    opal.login()
+    opal.load()
+    save_pickle(opal)
+
+def do_show_cards():
+    opal = load_opal()
+    print_cards(opal)
+    save_pickle(opal)
+
+def do_print(args):
+    opal = load_opal()
+
+    if args.card_number:
+        card_number = args.card_number
+    else:
+        card_number = 0
+    card_number = opal.resolve_card_number(card_number)
+
+    if args.num_days:
+        num_days = int(args.num_days)
+    elif args.graph_commuter:
+        num_days = 14
+    else:
+        num_days = 365
+
+    transaction_list = opal.get_transaction_list_for_card(card_number)
+    transaction_list = list(restrict_days(transaction_list, num_days))
+
+    if not transaction_list:
+        print("No transactions!", file=sys.stderr)
+        return
+
+    if args.show_transactions:
+        print_transaction_list(transaction_list)
+    elif args.graph_commuter:
+        graph_commuter(transaction_list)
+    else:
+        print("Missing display function!", file=sys.stderr)
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Opal card activity fetcher")
+
+    parser.add_argument("--num-days",
+        help="restrict to NUM_DAYS of output"
+    )
+    parser.add_argument("--card-number",
+        help="Opal card number or index (eg: 0,1,etc"
+    )
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--load", action="store_true",
@@ -390,10 +445,10 @@ def parse_args():
     group.add_argument("--show-cards", action="store_true",
         help="show a list of cards"
     )
-    group.add_argument("--show-transactions", metavar="CARD_NUMBER",
+    group.add_argument("--show-transactions", action="store_true",
         help="show transactions for card"
     )
-    group.add_argument("--graph-commuter", metavar="CARD_NUMBER",
+    group.add_argument("--graph-commuter", action="store_true",
         help="draw commuter graph for card with gnuplot"
     )
 
@@ -403,21 +458,17 @@ def parse_args():
 
 def main():
     args = parse_args()
-    opal = load_opal()
 
     if args.load:
-        opal.login()
-        opal.load()
-        save_pickle(opal)
+        do_load(opal)
+        return
 
-    if args.show_cards:
-        print_cards(opal)
+    elif args.show_cards:
+        do_show_cards()
+        return
 
-    if args.show_transactions:
-        print_transaction_list(opal.get_transaction_list_for_card(args.show_transactions))
-
-    if args.graph_commuter:
-        graph_commuter(opal.get_transaction_list_for_card(args.graph_commuter))
+    else:
+        do_print(args)
 
 if __name__ == "__main__":
     try:
