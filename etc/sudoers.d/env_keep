@@ -1,0 +1,4 @@
+Defaults env_keep += "LANG LANGUAGE LINGUAS LC_* _XKB_CHARSET"
+Defaults env_keep += "HOME"
+Defaults env_keep += "COLORFGBG"
+Defaults env_keep += "EDITOR"

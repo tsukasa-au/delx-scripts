@@ -1,0 +1,1 @@
+%sudo ALL = NOPASSWD: /usr/bin/aptitude update, /usr/bin/aptitude full-upgrade
