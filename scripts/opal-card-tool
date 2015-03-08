@@ -189,9 +189,15 @@ class CommuterGraph(object):
         self.xrange_start = None
         self.xrange_end = None
 
+    def is_plottable(self):
+        return self.xrange_start is not None and self.xrange_end is not None
+
     def graph(self, transaction_list):
         try:
             self.write_points(transaction_list)
+            if not self.is_plottable():
+                print("No transactions!", file=sys.stderr)
+                return
             self.write_plot_command()
             self.flush_files()
             self.run_gnuplot()
