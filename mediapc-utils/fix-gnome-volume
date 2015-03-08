@@ -1,0 +1,5 @@
+#!/bin/bash
+
+gsettings set org.gnome.settings-daemon.plugins.media-keys volume-mute 'XF86AudioMute'
+gsettings set org.gnome.settings-daemon.plugins.media-keys volume-down 'XF86AudioLowerVolume'
+gsettings set org.gnome.settings-daemon.plugins.media-keys volume-up 'XF86AudioRaiseVolume'
