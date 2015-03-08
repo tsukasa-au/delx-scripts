@@ -460,7 +460,7 @@ def main():
     args = parse_args()
 
     if args.load:
-        do_load(opal)
+        do_load()
         return
 
     elif args.show_cards:
