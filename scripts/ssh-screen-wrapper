@@ -12,5 +12,17 @@ else
     hostname="$public_hostname"
 fi
 
-exec ssh "$hostname" "$@" -t "bash --login -c 'screen -dR'"
+while true; do
+    clear
+    echo "Connecting to ${hostname}..."
+    ssh \
+        -o ServerAliveInterval=1 \
+        -o ServerAliveCountMax=5 \
+        -t \
+        "$hostname" \
+        "bash --login -c 'screen -dR'" \
+    && exit 0
+    echo "Disconnected, waiting..."
+    sleep 1
+done
 
