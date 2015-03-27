@@ -1,0 +1,100 @@
+#!/usr/bin/python3
+
+import argparse
+import datetime
+import os
+import subprocess
+import sys
+import re
+
+
+def increment_serial(line):
+    current_serial = re.search(R"\b\d\d*\b", line).group(0)
+
+    current = int(current_serial)
+    current_num = current % 100
+    current_date = (current - current_num) / 100
+    new_date = int(datetime.datetime.now().strftime("%Y%m%d"))
+    if current_date == new_date:
+        next_num = current_num + 1
+    else:
+        next_num = 0
+
+    if next_num >= 100:
+        raise ValueError("Too many serial changes today!")
+    new_serial = str(new_date) + str(next_num).zfill(2)
+    line = line.replace(current_serial, new_serial)
+
+    return line
+
+def replace_ip(line):
+    source_ip, source_port, dest_ip, dest_port = os.environ["SSH_CONNECTION"].split()
+    line = re.sub(R"\b\d\d?\d?\.\d\d?\d?\.\d\d?\d?\.\d\d?\d?\b", source_ip, line)
+    return line
+
+def update_dyndns(zonefile, dnslabel):
+    out = []
+    with open(zonefile, encoding="utf-8") as f:
+        for line in f:
+            if line.find("Serial") >= 0:
+                line = increment_serial(line)
+            elif line.find("DYNDNS") >= 0 and line.find(dnslabel) >= 0:
+                line = replace_ip(line)
+            out.append(line)
+
+    with open(zonefile, "w", encoding="utf-8") as f:
+        f.writelines(out)
+
+    reload_bind()
+
+
+def load_zonefile(zonefile):
+    with open(zonefile, encoding="utf-8") as f:
+        sys.stdout.write(f.read())
+
+
+def save_zonefile(zonefile):
+    with open(zonefile, "w", encoding="utf-8") as f:
+        f.write(sys.stdin.read())
+
+    reload_bind()
+
+def reload_bind():
+    subprocess.check_call(["sudo", "systemctl", "reload", "bind9"])
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Edit zone files")
+
+    parser.add_argument("--zonefile", required=True,
+        help="the zone file to operate on")
+
+
+    action_group = parser.add_mutually_exclusive_group(required=True)
+
+    action_group.add_argument("--dyndns",
+        help="update the specified dnslabel with the SSH origin IP")
+
+    action_group.add_argument("--load", action="store_true",
+        help="print the zone file to stdout")
+
+    action_group.add_argument("--save", action="store_true",
+        help="save the contents of stdin to the zone file")
+
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+
+    if args.dyndns:
+        update_dyndns(args.zonefile, args.dyndns)
+    elif args.load:
+        load_zonefile(args.zonefile)
+    elif args.save:
+        save_zonefile(args.zonefile)
+    else:
+        assert False, "Bad action"
+
+if __name__ == "__main__":
+    main()
