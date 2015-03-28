@@ -48,22 +48,27 @@ def update_dyndns(zonefile, dnslabel):
     reload_bind()
 
 
-def load_zonefile(zonefile):
+def read_zonefile(zonefile):
     with open(zonefile, encoding="utf-8") as f:
         sys.stdout.write(f.read())
 
 
-def save_zonefile(zonefile):
+def write_zonefile(zonefile):
+    data = sys.stdin.read()
+    if len(data) < 100:
+        raise Exception("Expected more than 100 bytes on stdin!")
+
     with open(zonefile, "w", encoding="utf-8") as f:
-        f.write(sys.stdin.read())
+        f.write(data)
 
     reload_bind()
 
 def reload_bind():
     subprocess.check_call(["sudo", "systemctl", "reload", "bind9"])
+    print("bind reloaded")
 
 
-def parse_args():
+def parse_ssh_args():
     parser = argparse.ArgumentParser(description="Edit zone files")
 
     parser.add_argument("--zonefile", required=True,
@@ -75,13 +80,46 @@ def parse_args():
     action_group.add_argument("--dyndns",
         help="update the specified dnslabel with the SSH origin IP")
 
-    action_group.add_argument("--load", action="store_true",
+    action_group.add_argument("--read", action="store_true",
         help="print the zone file to stdout")
 
-    action_group.add_argument("--save", action="store_true",
+    action_group.add_argument("--write", action="store_true",
         help="save the contents of stdin to the zone file")
 
+    ssh_args = os.environ.get("SSH_ORIGINAL_COMMAND", "--help").split()[1:]
+    return parser.parse_args(ssh_args)
+
+def parse_cmdline_args():
+    parser = argparse.ArgumentParser(description="Edit zone files")
+
+    parser.add_argument("--allow-zonefile", required=True, action="append",
+        help="specify allowed zone files")
+
+    parser.add_argument("--allow-write", action="store_true",
+        help="allow --write option")
+
+    parser.add_argument("--allow-dyndns",
+        help="allow --dyndns option")
+
     return parser.parse_args()
+
+def parse_args():
+    cmdline_args = parse_cmdline_args()
+    ssh_args = parse_ssh_args()
+
+    if ssh_args.zonefile not in cmdline_args.allow_zonefile:
+        print("The specified zonefile is not on the allowed list:", cmdline_args.allow_zonefile)
+        sys.exit(1)
+
+    if ssh_args.dyndns and ssh_args.dyndns != cmdline_args.allow_dyndns:
+        print("Dynamic DNS is only allowed for:", cmdline_args.allow_dyndns)
+        sys.exit(1)
+
+    if ssh_args.write and not cmdline_args.allow_write:
+        print("Write to zonefile is not allowed")
+        sys.exit(1)
+
+    return ssh_args
 
 
 def main():
@@ -89,10 +127,10 @@ def main():
 
     if args.dyndns:
         update_dyndns(args.zonefile, args.dyndns)
-    elif args.load:
-        load_zonefile(args.zonefile)
-    elif args.save:
-        save_zonefile(args.zonefile)
+    elif args.read:
+        read_zonefile(args.zonefile)
+    elif args.write:
+        write_zonefile(args.zonefile)
     else:
         assert False, "Bad action"
 
