@@ -55,13 +55,17 @@ def read_zonefile(zonefile):
 
 def write_zonefile(zonefile):
     data = sys.stdin.read()
-    if len(data) < 100:
-        raise Exception("Expected more than 100 bytes on stdin!")
+    if not data.strip().endswith("; END"):
+        print("Missing end of file marker -- ; END")
+        sys.exit(1)
 
     with open(zonefile, "w", encoding="utf-8") as f:
         f.write(data)
 
     reload_bind()
+
+def tail_logs():
+    subprocess.check_call(["sudo", "journalctl", "-u", "bind9", "-f"])
 
 def reload_bind():
     subprocess.check_call(["sudo", "systemctl", "reload", "bind9"])
@@ -71,11 +75,14 @@ def reload_bind():
 def parse_ssh_args():
     parser = argparse.ArgumentParser(description="Edit zone files")
 
-    parser.add_argument("--zonefile", required=True,
+    parser.add_argument("--zonefile",
         help="the zone file to operate on")
 
 
     action_group = parser.add_mutually_exclusive_group(required=True)
+
+    action_group.add_argument("--logs", action="store_true",
+        help="show bind logs")
 
     action_group.add_argument("--dyndns",
         help="update the specified dnslabel with the SSH origin IP")
@@ -87,7 +94,14 @@ def parse_ssh_args():
         help="save the contents of stdin to the zone file")
 
     ssh_args = os.environ.get("SSH_ORIGINAL_COMMAND", "--help").split()[1:]
-    return parser.parse_args(ssh_args)
+    args = parser.parse_args(ssh_args)
+
+    if not args.logs and not args.zonefile:
+        print("Required parameter: --zonefile\n")
+        parser.print_help()
+        sys.exit(0)
+
+    return args
 
 def parse_cmdline_args():
     parser = argparse.ArgumentParser(description="Edit zone files")
@@ -107,7 +121,7 @@ def parse_args():
     cmdline_args = parse_cmdline_args()
     ssh_args = parse_ssh_args()
 
-    if ssh_args.zonefile not in cmdline_args.allow_zonefile:
+    if ssh_args.zonefile and ssh_args.zonefile not in cmdline_args.allow_zonefile:
         print("The specified zonefile is not on the allowed list:", cmdline_args.allow_zonefile)
         sys.exit(1)
 
@@ -125,7 +139,9 @@ def parse_args():
 def main():
     args = parse_args()
 
-    if args.dyndns:
+    if args.logs:
+        tail_logs()
+    elif args.dyndns:
         update_dyndns(args.zonefile, args.dyndns)
     elif args.read:
         read_zonefile(args.zonefile)
