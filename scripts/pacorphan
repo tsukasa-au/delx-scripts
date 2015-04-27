@@ -41,7 +41,7 @@ for filename in os.listdir(PACORPHAN_PATH):
 for pkg in run(["pacman", "-Qq"]):
     installed_pkg_list.append(pkg)
 
-for pkg in run(["pacman", "-Qtq"]):
+for pkg in run(["pacman", "-Qttq"]):
     unneeded_pkg_list.append(pkg)
 
 for pkg in run(["pacman", "-Qeq"]):
