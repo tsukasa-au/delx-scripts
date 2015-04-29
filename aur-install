@@ -1,0 +1,41 @@
+#!/bin/bash
+
+set -e
+
+pkgname="$1"
+if [ -z "$pkgname" ]; then
+    echo "Usage: $0 pkgname"
+    exit 1
+fi
+absdir="/var/abs/local/${pkgname}"
+url="https://aur.archlinux.org/packages/${pkgname:0:2}/${pkgname}/${pkgname}.tar.gz"
+
+unpackdir="${absdir}/unpack"
+mkdir -p "$unpackdir"
+
+curl -s "$url" | tar zx --strip-components=1 -C "$unpackdir"
+for b in "$unpackdir"/*; do
+    a="${absdir}/$(basename "$b")"
+    if [ -r "$a" ]; then
+        diff -u "$a" "$b" || true
+    else
+        echo -e "\nNEW FILE: $a\n"
+        cat "$b"
+        echo -e "\n^^ NEW FILE: $a\n"
+    fi
+done
+
+
+read -p "Ok? (y/n) " ok
+if [ "$ok" != "y" ]; then
+    exit 1
+fi
+
+
+mv -v "${unpackdir}"/* "${absdir}/"
+rm -f "${unpackdir}/.SRCINFO"
+rmdir "$unpackdir"
+
+
+(cd "$absdir" && makepkg -i)
+
