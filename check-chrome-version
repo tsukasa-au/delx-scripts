@@ -1,0 +1,9 @@
+#!/bin/bash
+
+URL="https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-amd64/Packages"
+LATEST_VERSION="$(curl -s "$URL" | grep 'Filename:.*google-chrome-stable' | cut -d_ -f2)"
+INSTALLED_VERSION="$(pacman -Q google-chrome | cut -d' ' -f2)"
+
+if [ "$LATEST_VERSION" != "$INSTALLED_VERSION" ]; then
+    echo "New Google Chrome: $INSTALLED_VERSION -> $LATEST_VERSION"
+fi

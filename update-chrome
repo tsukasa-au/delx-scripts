@@ -1,0 +1,6 @@
+#!/bin/bash
+
+update-abs-package \
+    "/var/abs/local/google-chrome" \
+    "https://aur.archlinux.org/packages/go/google-chrome/google-chrome.tar.gz"
+
