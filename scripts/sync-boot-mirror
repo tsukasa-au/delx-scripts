@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -e
+
+rsync -a --exclude=lost+found --delete /boot/ /boot-mirror/
+
+function get_uuid {
+    eval $(grep "$1 " /etc/fstab | cut -d ' ' -f1)
+    echo "$UUID"
+}
+
+# Replace UUIDs so it can actually boot!
+sed -i "s/$(get_uuid /boot)/$(get_uuid /boot-mirror)/g" \
+    $(find /boot-mirror/grub/ -name '*.cfg')
+
