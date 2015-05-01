@@ -1,0 +1,6 @@
+SHELL=/bin/bash
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=root
+
+# m    h  dom mon dow   user    command
+  0    2   *   *   *    root    /backup/scripts/backup-all

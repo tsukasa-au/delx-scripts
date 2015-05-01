@@ -1,0 +1,18 @@
+#! bash
+
+set -e
+ionice -c 3 -p $$
+renice -n 19 -p $$ > /dev/null
+
+script="$(basename "${BASH_SOURCE[1]}" .sh)"
+
+(
+if ! flock -n -x 200; then
+    echo "Failed to get a lock!"
+    exit 1
+fi
+
+run_backup
+
+) 200>"/run/lock/backup-${script}"
+
