@@ -1,14 +1,53 @@
 #!/bin/bash
 
-for pid in $(sudo lsof +c 0 / | grep DEL | awk '{print $2}' | sort -u); do
+function get_pids_to_restart {
+    sudo lsof +c 0 / | \
+        grep 'DEL\|(deleted)' | \
+        awk '{print $2}' | \
+        sort -u
+}
+
+function find_service_for_pid {
+    systemctl status "$1" | \
+        head -n1 | \
+        awk '{print $2}' | \
+        grep '\.service$'
+}
+
+function is_cron_child {
+    if [ "$1" != "cronie.service" ]; then
+        return 1
+    fi
+    if systemctl show cronie -p MainPID | grep -q "$2"; then
+        return 1
+    fi
+    return 0
+}
+
+function echo_kill_pid {
+    echo "sudo kill $1 # $(ps -p"$1" -o user=,cmd=)"
+}
+
+function echo_restart_service {
+    echo "sudo systemctl restart $1"
+}
+
+for pid in $(get_pids_to_restart); do
     if [ "$pid" = 1 ]; then
         echo "sudo systemctl daemon-reexec"
         exit 0
     fi
 
-    service="$(systemctl status "$pid" | head -n1 | awk '{print $2}')"
-    if [ -n "$service" ]; then
-        echo "sudo systemctl restart $service"
+    service="$(find_service_for_pid "$pid")"
+    if is_cron_child "$service" "$pid"; then
+        echo_kill_pid "$pid"
+
+    elif [ -n "$service" ]; then
+        echo_restart_service "$service"
+
+    else
+        echo_kill_pid "$pid"
     fi
+
 done | sort -u
 
