@@ -1,0 +1,181 @@
+#!/bin/bash
+
+##########################################################################
+# Bash HTTP Server                                                       #
+#                                                                        #
+# This is just a bit of fun. Please don't trust it for anything serious! #
+##########################################################################
+
+# static configuration
+PORT="${PORT:-8080}"
+SERVER_ROOT="${SERVER_ROOT:-$PWD}"
+
+# per-request globals
+STATE_FUNC=""
+REQUEST_LINE=""
+REQUEST_FILE=""
+
+
+function main {
+    set -e
+
+    cd "$SERVER_ROOT"
+    print_log "Server running on port $PORT in $SERVER_ROOT"
+
+    while true; do
+        handle_connection
+    done
+}
+
+function print_log {
+    echo "$(date -Iseconds) $@"
+}
+
+function handle_connection {
+    start_netcat
+
+    STATE_FUNC="handle_read_request_status_line"
+    while [ -n "$STATE_FUNC" ]; do
+        $STATE_FUNC || break
+    done <&"${COPROC[0]}"
+
+    close_request
+}
+
+function start_netcat {
+    coproc nc -l "$PORT"
+}
+
+function close_request {
+    STATE_FUNC=""
+    kill "$COPROC_PID" &> /dev/null || true
+    wait "$COPROC_PID" &> /dev/null || true
+}
+
+function handle_read_request_status_line {
+    read_request_line
+    print_log "$REQUEST_LINE"
+
+    read method path ignored < <(echo "$REQUEST_LINE")
+    REQUEST_FILE=".$path"
+
+    check_valid_method || return 0
+    check_path_is_under_server_root || return 0
+    find_index_in_request_file
+    check_request_file_exists || return 0
+
+    STATE_FUNC="handle_read_request_to_end"
+}
+
+function check_valid_method {
+    if [ "$method" != "GET" ]; then
+        STATE_FUNC="write_error_response_405"
+        return 1
+    fi
+}
+
+function check_path_is_under_server_root {
+    abspath="$(cd "$(dirname "$REQUEST_FILE")" && pwd)"
+    if ! echo "$abspath" | grep -q "^$PWD"; then
+        STATE_FUNC="write_error_response_400"
+        return 1
+    fi
+}
+
+function find_index_in_request_file {
+    if [ ! -d "$REQUEST_FILE" ]; then
+        return 0
+    fi
+
+    for filename in index.html index.txt; do
+        if [ -f "${REQUEST_FILE}/${filename}" ]; then
+            REQUEST_FILE="${REQUEST_FILE}/${filename}"
+            return 0
+        fi
+    done
+}
+
+function check_request_file_exists {
+    if [ ! -f "$REQUEST_FILE" ]; then
+        STATE_FUNC="write_error_response_404"
+        return 1
+    fi
+}
+
+function handle_read_request_to_end {
+    read_request_line
+
+    if [ -z "$REQUEST_LINE" ]; then
+        STATE_FUNC="write_response"
+    fi
+}
+
+function read_request_line {
+    read REQUEST_LINE
+    REQUEST_LINE="$(echo "$REQUEST_LINE" | tr -d '')"
+}
+
+function write_response {
+    STATE_FUNC=""
+    cat <<EOT >&"${COPROC[1]}"
+HTTP/1.0 200 OK
+Server: bashttpd
+Content-Type: $(file -bi "$REQUEST_FILE")
+Connection: close
+
+$(cat "$REQUEST_FILE")
+EOT
+}
+
+function write_error_response {
+    STATE_FUNC=""
+    local code="$1"
+    local message="$2"
+    cat <<EOT >&"${COPROC[1]}"
+HTTP/1.0 $code $message
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>$code $message</title>
+</head>
+<body>
+<h1>$code $message</h1>
+</body>
+</html>
+EOT
+}
+
+function write_error_response_400 {
+    write_error_response 400 "Bad Request"
+}
+
+function write_error_response_404 {
+    write_error_response 404 "File Not Found"
+}
+
+function write_error_response_405 {
+    write_error_response 405 "Unsupported method"
+}
+
+function check_dependencies {
+    check_bash
+    check_netcat
+}
+
+function check_bash {
+    if [ "${BASH_VERSINFO[0]}" -lt 4 ]; then
+        echo "ERROR! Requires Bash 4+ for coproc support"
+        exit 1
+    fi
+}
+
+function check_netcat {
+    if ! nc -h 2>&1 | head -n1 | grep -q '^OpenBSD netcat'; then
+        echo "ERROR! Requires OpenBSD netcat to be installed"
+        exit 1
+    fi
+}
+
+check_dependencies
+main
