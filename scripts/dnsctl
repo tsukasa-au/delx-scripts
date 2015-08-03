@@ -65,11 +65,11 @@ def write_zonefile(zonefile):
     reload_bind()
 
 def tail_logs():
-    subprocess.check_call(["sudo", "journalctl", "-u", "bind9", "-f"])
+    subprocess.check_call(["sudo", "journalctl", "-u", "nsd", "-f"])
 
 def reload_bind():
-    subprocess.check_call(["sudo", "systemctl", "reload", "bind9"])
-    print("bind reloaded")
+    subprocess.check_call(["sudo", "systemctl", "reload", "nsd"])
+    print("nsd reloaded")
 
 
 def parse_ssh_args():
