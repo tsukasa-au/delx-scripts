@@ -2,40 +2,45 @@
 
 set -e
 
-pkgname="$1"
-if [ -z "$pkgname" ]; then
+PKGNAME="$1"
+if [ -z "$PKGNAME" ]; then
     echo "Usage: $0 pkgname"
     exit 1
 fi
-absdir="/var/abs/local/${pkgname}"
-url="https://aur.archlinux.org/packages/${pkgname:0:2}/${pkgname}/${pkgname}.tar.gz"
 
-unpackdir="${absdir}/unpack"
-mkdir -p "$unpackdir"
+function enter_directory {
+    mkdir -p "$1"
+    cd "$1"
+}
 
-curl -s "$url" | tar zx --strip-components=1 -C "$unpackdir"
-for b in "$unpackdir"/*; do
-    a="${absdir}/$(basename "$b")"
-    if [ -r "$a" ]; then
-        diff -u "$a" "$b" || true
-    else
-        echo -e "\nNEW FILE: $a\n"
-        cat "$b"
-        echo -e "\n^^ NEW FILE: $a\n"
+function fetch_latest_changes {
+    if [ ! -d .git ]; then
+        git init
+        git remote add origin "https://aur.archlinux.org/${PKGNAME}"
     fi
-done
+    git fetch
+    git reset origin/master
+}
 
+function show_diff {
+    git diff -R
+}
 
-read -p "Ok? (y/n) " ok
-if [ "$ok" != "y" ]; then
-    exit 1
-fi
+function ask_user_to_continue {
+    read -p "Ok? (y/n) " ok
+    if [ "$ok" != "y" ]; then
+        return 1
+    fi
+}
 
+function build_and_install {
+    git checkout .
+    git clean -f
+    makepkg -i
+}
 
-mv -v "${unpackdir}"/* "${absdir}/"
-rm -f "${unpackdir}/.SRCINFO"
-rmdir "$unpackdir"
-
-
-(cd "$absdir" && makepkg -i)
-
+enter_directory "/var/abs/local/${PKGNAME}"
+fetch_latest_changes
+show_diff
+ask_user_to_continue
+build_and_install
