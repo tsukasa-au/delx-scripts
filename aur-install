@@ -34,8 +34,9 @@ function ask_user_to_continue {
 }
 
 function build_and_install {
-    git checkout .
+    rm -f .gitignore
     git clean -f
+    git checkout .
     makepkg -i
 }
 
