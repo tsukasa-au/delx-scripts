@@ -37,7 +37,7 @@ function build_and_install {
     rm -f .gitignore
     git clean -f
     git checkout .
-    makepkg -i
+    makepkg -sri
 }
 
 enter_directory "/var/abs/local/${PKGNAME}"
