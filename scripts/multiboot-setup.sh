@@ -116,5 +116,5 @@ elif [[ "$1" == *.iso ]]; then
     ISOFILE="$1"
     setup_iso
 else
-    echo "Usage: [bootloader|/path/to/ubuntu.iso]"
+    echo "Usage: [reset|/path/to/ubuntu.iso]"
 fi
