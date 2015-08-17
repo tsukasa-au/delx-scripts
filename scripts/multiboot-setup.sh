@@ -110,8 +110,6 @@ menuentry "${menulabel}"
 EOT
 }
 
-cd "$(dirname "$0")"
-
 if [ "$1" = "reset" ]; then
     setup_bootloader
 elif [[ "$1" == *.iso ]]; then
