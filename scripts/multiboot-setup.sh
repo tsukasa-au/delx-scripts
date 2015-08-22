@@ -14,12 +14,12 @@ function setup_bootloader {
 function install_syslinux {
     rm -rf syslinux
     mkdir syslinux
-    cp -R /usr/lib/syslinux/bios/* syslinux/
+    cp -R /usr/lib/syslinux/bios/*.c32 syslinux/
 
     echo "UI menu.c32" >> "$SYSLINUX_CFG"
 
     echo "Install syslinux:"
-    echo "  # syslinux -i -d syslinux /dev/sdX"
+    echo "  # extlinux -i -d /<mountpoint>/syslinux"
 }
 
 function install_refind {
