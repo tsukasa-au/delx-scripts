@@ -1,0 +1,13 @@
+cups
+ghostscript
+gsfonts
+avahi
+
+# drivers
+foomatic-db
+foomatic-db-engine
+foomatic-db-nonfree
+gutenprint
+hplip
+python2-pyqt4 # hplip
+splix

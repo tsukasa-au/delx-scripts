@@ -1,0 +1,16 @@
+autoconf
+automake
+bison
+cmake
+fakeroot
+flex
+gcc
+gcc-libs
+gdb
+intltool
+libtool
+m4
+make
+patch
+pkg-config
+yasm

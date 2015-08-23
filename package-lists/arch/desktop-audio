@@ -1,0 +1,8 @@
+alsa-firmware
+alsa-lib
+alsa-plugins
+alsa-utils
+pavucontrol
+pulseaudio
+pulseaudio-alsa
+pulseaudio-gconf
