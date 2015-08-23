@@ -25,10 +25,11 @@ function install_syslinux {
 function install_refind {
     rm -rf System
     mkdir -p System/Library/CoreServices
-    cp -R /usr/share/refind/* System/Library/CoreServices/
-    cp System/Library/CoreServices/{refind_x64.efi,boot.efi}
+    cp /usr/share/refind/refind_x64.efi System/Library/CoreServices/boot.efi
 
     echo "timeout 0" >> "$REFIND_CFG"
+    echo "textonly true" >> "$REFIND_CFG"
+    echo "textmode 1024" >> "$REFIND_CFG"
     echo "scanfor manual" >> "$REFIND_CFG"
 }
 
