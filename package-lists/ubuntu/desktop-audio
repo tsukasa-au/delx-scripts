@@ -4,3 +4,4 @@ pavucontrol
 pulseaudio
 pulseaudio-module-gconf
 pulseaudio-module-x11
+pulseaudio-utils
