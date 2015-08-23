@@ -1,0 +1,6 @@
+alsa-base
+alsa-utils
+pavucontrol
+pulseaudio
+pulseaudio-module-gconf
+pulseaudio-module-x11

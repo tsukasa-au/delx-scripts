@@ -2,6 +2,7 @@ acl
 apt-utils
 aptitude
 ca-certificates
+cryptsetup
 dbus
 debian-keyring
 doc-debian
@@ -13,6 +14,7 @@ iproute2
 less
 locales
 logrotate
+lvm2
 makedev
 man-db
 manpages

@@ -1,0 +1,5 @@
+dosfstools
+exfat-fuse
+exfat-utils
+ntfs-3g
+xfsprogs
