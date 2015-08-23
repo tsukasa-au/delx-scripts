@@ -1,0 +1,16 @@
+curl
+dnsutils
+elinks
+fping
+iftop
+iptraf
+iputils-ping
+mtr-tiny
+netcat-openbsd
+nmap
+tcpdump
+telnet
+traceroute
+wakeonlan
+wget
+whois
