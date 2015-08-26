@@ -1,12 +1,12 @@
-#!/usr/bin/python2
+#!/usr/bin/env python2
 
-import MySQLdb
 import os
 import re
 import socket
 import sys
 
-from socket import gethostname
+import lxml.etree
+import MySQLdb
 
 os.chdir(sys.argv[1])
 
@@ -21,29 +21,31 @@ for dirpath, dirnames, filenames in os.walk(".", topdown=False):
         os.rmdir(dirname)
 
 # Connect to the MythTV database based on the MythTV config
-config_values = {}
-for line in open(os.path.expanduser("~/.mythtv/mysql.txt")):
-    line = line.strip()
-    if line and not line.startswith("#"):
-        (key, value) = line.split("=")
-        config_values[key] = value
+with open(os.path.expanduser("~/.mythtv/config.xml")) as f:
+    config_xml = lxml.etree.parse(f, lxml.etree.XMLParser(encoding="utf-8"))
 
 db_connection = MySQLdb.connect(
-    host = config_values["DBHostName"],
-    user = config_values["DBUserName"],
-    passwd = config_values["DBPassword"],
-    db = config_values["DBName"]
+    host = config_xml.xpath("/Configuration/Database/Host/text()")[0],
+    port = int(config_xml.xpath("/Configuration/Database/Port/text()")[0]),
+    user = config_xml.xpath("/Configuration/Database/UserName/text()")[0],
+    passwd = config_xml.xpath("/Configuration/Database/Password/text()")[0],
+    db = config_xml.xpath("/Configuration/Database/DatabaseName/text()")[0],
 )
 cursor = db_connection.cursor(MySQLdb.cursors.DictCursor)
 
 # Regexp for what is allowed in the symlink name
 unsafe = re.compile("[^a-zA-Z0-9\-_ ,\\.]+")
 
+try:
+    localhostname = config_xml.xpath("/Configuration/LocalHostName/text()")[0]
+except IndexError:
+    localhostname = socket.gethostname()
+
 # Find the recordings directory
 cursor.execute("""
     SELECT * FROM settings
     WHERE value='RecordFilePrefix' AND hostname='%s'
-""" % socket.gethostname())
+""" % localhostname)
 recordingsdir = cursor.fetchone()["data"]
 
 # Now find all the recordings we have at the moment
