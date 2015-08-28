@@ -2,6 +2,7 @@ alsa-firmware
 alsa-lib
 alsa-plugins
 alsa-utils
+espeak
 pavucontrol
 pulseaudio
 pulseaudio-alsa

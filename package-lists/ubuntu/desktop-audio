@@ -1,5 +1,6 @@
 alsa-base
 alsa-utils
+espeak
 pavucontrol
 pulseaudio
 pulseaudio-module-gconf
