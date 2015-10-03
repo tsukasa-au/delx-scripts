@@ -35,10 +35,13 @@ fi
 
 # Stop XFCE4 volume control
 if [ "$1" = "--pause-xfce4-volumed" ]; then
-    echo "killall xfce4-volumed-pulse"
-    pause_xfce4_volumed=1
+    echo "killall xfce4-volumed*"
+    if killall -q xfce4-volumed; then
+        pause_xfce4_volumed="xfce4-volumed"
+    elif killall -q xfce4-volumed-pulse; then
+        pause_xfce4_volumed="xfce4-volumed-pulse"
+    fi
     shift
-    killall xfce4-volumed-pulse
 fi
 
 # Run the program
@@ -59,7 +62,7 @@ fi
 
 # Restore volume keys
 if [ -n "$pause_xfce4_volumed" ]; then
-    xfce4-volumed-pulse
+    "$pause_xfce4_volumed"
 fi
 
 ) 200>"$LOCKFILE"
