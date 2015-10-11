@@ -19,6 +19,7 @@ function install_syslinux {
     echo "UI menu.c32" >> "$SYSLINUX_CFG"
 
     echo "Install syslinux:"
+    echo "  # dd bs=440 count=1 if=/usr/lib/syslinux/bios/mbr.bin of=/dev/sdX"
     echo "  # extlinux -i -d /<mountpoint>/syslinux"
 }
 
@@ -117,5 +118,5 @@ elif [[ "$1" == *.iso ]]; then
     ISOFILE="$1"
     setup_iso
 else
-    echo "Usage: [reset|/path/to/ubuntu.iso]"
+    echo "Usage: $0 [reset|/path/to/ubuntu.iso]"
 fi
