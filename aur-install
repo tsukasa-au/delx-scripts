@@ -39,7 +39,7 @@ function build_and_install {
     makepkg -sri
 }
 
-enter_directory "/var/abs/local/${PKGNAME}"
+enter_directory "/var/abs/aur/${PKGNAME}"
 fetch_latest_changes
 show_diff
 ask_user_to_continue
