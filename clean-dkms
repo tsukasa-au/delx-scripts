@@ -12,13 +12,13 @@ echo
 find /var/lib/dkms/ -maxdepth 2 -type l -name 'kernel-*' | while read line; do
     module_name="$(echo "$line" | cut -d/ -f5)"
     package_name="${module_name}-dkms"
-    module_version="$(pacman -Q "${package_name}" | cut -d' ' -f2)"
+    module_version="$(pacman -Q "${package_name}" | cut -d' ' -f2 | cut -d'-' -f1)"
     long_kernel_version="$(echo "$line" | cut -d/ -f6)"
     kernel_version="$(echo "$long_kernel_version" | sed -e 's/^kernel-//' -e "s/-${architecture}\$//")"
     if [ "$kernel_version" = "$(uname -r)" ]; then
         continue
     fi
-    echo dkms remove -m "$module_name" -v 6.30.223.248 -k "$kernel_version"
+    echo dkms remove -m "$module_name" -v "$module_version" -k "$kernel_version"
 done
 
 echo
