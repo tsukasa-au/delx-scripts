@@ -2,7 +2,7 @@
 
 set -e
 
-find /var/abs -type d -name .git -printf '%h\n' | while read d; do
+ls -1d /var/abs/aur/* | while read d; do
     pushd "$d" > /dev/null
     git fetch
     if [ 0 -ne "$(git diff-index --cached origin/master | wc -l)" ]; then
