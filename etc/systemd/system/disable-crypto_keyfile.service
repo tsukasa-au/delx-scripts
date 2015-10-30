@@ -1,0 +1,11 @@
+[Unit]
+Description=Disable /root/crypto_keyfile.bin on every boot
+After=basic.target
+
+[Service]
+Type=oneshot
+ExecStart=cryptsetup luksRemoveKey /dev/disk/by-uuid/%i /crypto_keyfile.bin
+SuccessExitStatus=2
+
+[Install]
+WantedBy=basic.target

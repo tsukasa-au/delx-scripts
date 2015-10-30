@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# When using the Arch Linux mkinitcpio encrypt if the file /crypto_keyfile.bin
+# exists in the initramfs then it will be used to attempt unlocking.
+# 1. dd if=/dev/urandom of=/crypto_keyfile.bin bs=1 count=512
+# 2. mkinitcpio -p linux
+# 3. Add /crypto_keyfile.bin to FILES in /etc/mkinitcpio.conf
+# 4. Enable the disable-crypto_keyfiles@<root-disk-uuid>.service
+# 5. Run this script when you want to reboot without a passphrase
+
+
+crypto_keyfile="/crypto_keyfile.bin"
+
+if [ ! -f "$crypto_keyfile" ]; then
+    echo "Failed to find $crypto_keyfile"
+    exit 1
+fi
+
+disk_uuid="$(ls /etc/systemd/system/basic.target.wants/disable-crypto_keyfile@*.service | cut -d'@' -f2 | cut -d. -f1)"
+device_filename="/dev/disk/by-uuid/${disk_uuid}"
+if [ -z "$device_filename" ]; then
+    echo "Failed to find your encrypted device. You must have disable-crypto_keyfile@.service enabled."
+    exit 1
+fi
+
+set -x
+sudo cryptsetup luksAddKey "$device_filename" "$crypto_keyfile"
+sudo reboot
