@@ -24,5 +24,5 @@ if [ -z "$device_filename" ]; then
 fi
 
 set -ex
-sudo cryptsetup luksAddKey "$device_filename" "$crypto_keyfile"
+sudo cryptsetup luksAddKey "$device_filename" "$crypto_keyfile" --key-slot 7
 sudo reboot

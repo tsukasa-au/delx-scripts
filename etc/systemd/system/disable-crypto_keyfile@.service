@@ -4,7 +4,7 @@ After=basic.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/cryptsetup luksRemoveKey /dev/disk/by-uuid/%i /crypto_keyfile.bin
+ExecStart=/bin/cryptsetup luksRemoveKey /dev/disk/by-uuid/%i /crypto_keyfile.bin --key-slot 7
 SuccessExitStatus=2
 
 [Install]
