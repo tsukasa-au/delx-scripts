@@ -2,7 +2,6 @@ autoconf
 automake
 bison
 cmake
-fakeroot
 flex
 gcc
 gcc-libs

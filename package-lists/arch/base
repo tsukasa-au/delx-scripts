@@ -5,6 +5,7 @@ cronie
 cryptsetup
 device-mapper
 e2fsprogs
+fakeroot
 file
 filesystem
 findutils
