@@ -27,16 +27,24 @@ unneeded_pkg_list = []
 installed_pkg_list = []
 explicit_pkg_list = []
 
-for filename in os.listdir(PACORPHAN_PATH):
+for filename in sorted(os.listdir(PACORPHAN_PATH)):
     if filename.startswith("."):
         continue
-    filename = os.path.join(PACORPHAN_PATH, filename)
-    for pkg in codecs.open(filename, "r", "utf-8"):
-        pkg = strip_comment(pkg)
-        if pkg in keep_pkg_list:
-            print("# Duplicate entry: " + pkg)
-        if pkg:
-            keep_pkg_list.append(pkg.strip())
+    full_filename = os.path.join(PACORPHAN_PATH, filename)
+    for pkg in codecs.open(full_filename, "r", "utf-8"):
+        pkg = strip_comment(pkg).strip()
+        if not pkg:
+            continue
+        if filename[0] != "~":
+            if pkg in keep_pkg_list:
+                print("# Duplicate entry:", pkg, "in file", filename)
+                continue
+            keep_pkg_list.append(pkg)
+        else:
+            if pkg not in keep_pkg_list:
+                print("# Redundant removal:", pkg, "in file", filename)
+                continue
+            keep_pkg_list.remove(pkg)
 
 for pkg in run(["pacman", "-Qq"]):
     installed_pkg_list.append(pkg)
