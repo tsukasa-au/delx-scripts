@@ -1,3 +1,6 @@
+Defaults umask=0022
+Defaults umask_override
+
 Defaults env_keep += "LANG LANGUAGE LINGUAS LC_* _XKB_CHARSET"
 Defaults env_keep += "HOME"
 Defaults env_keep += "COLORFGBG"
