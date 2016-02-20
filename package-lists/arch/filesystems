@@ -2,6 +2,5 @@ btrfs-progs
 cifs-utils
 dosfstools
 exfat-utils
-fuse-exfat
 ntfs-3g
 xfsprogs
