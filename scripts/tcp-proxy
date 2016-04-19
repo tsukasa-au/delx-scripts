@@ -231,7 +231,7 @@ class BasicForwarder(asyncore.dispatcher):
 
     def handle_accept(self):
         client_connection, source_addr = self.accept()
-        if source_addr[0] not in map(socket.gethostbyname, self.allowed):
+        if not self.is_connected_allowed(source_addr):
             print >>sys.stderr, "Rejected connection from", source_addr
             client_connection.close()
             return
@@ -242,6 +242,15 @@ class BasicForwarder(asyncore.dispatcher):
         client = Proxy(client_connection)
         server = Proxy((self.host, self.port))
         server.meet(client)
+
+    def is_connected_allowed(self, source_addr):
+        if len(self.allowed) == 1 and self.allowed[0].lower() == "all":
+            return True
+
+        if source_addr[0] in map(socket.gethostbyname, self.allowed):
+            return True
+
+        return False
 
 class Forwarder(asyncore.dispatcher):
     def __init__(self, listen_port, allowed):
