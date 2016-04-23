@@ -1,69 +1,16 @@
 #!/bin/bash
 
 LOCKFILE="$HOME/.mediawrap.lock"
-PULSESTATE="$HOME/.pulseaudio.state"
 
 (
 if ! flock -w 10 -x 200; then
     echo "Failed to get a lock!"
     exit 1
 fi
-echo "got lock"
-
-# Unmute everything and turn volume to full
-if [ "$1" = "--max-volume" ]; then
-    echo "max volume"
-    max_volume=1
-    shift
-    pacmd 'dump' | grep 'set-sink' > "$PULSESTATE"
-    cat "$PULSESTATE" | grep 'set-sink-mute' | awk '{print $2;}' | \
-        while read device; do
-            pacmd "set-sink-volume $device 0x10000" > /dev/null
-            pacmd "set-sink-mute $device no" > /dev/null
-        done
-fi
-
-# Switch volume keys to F8/F9/F10 with xmodmap
-if [ "$1" = "--pause-gnome-volume" ]; then
-    echo "disable gnome volume"
-    pause_gnome_volume=1
-    shift
-    gsettings set org.gnome.settings-daemon.plugins.media-keys volume-mute ''
-    gsettings set org.gnome.settings-daemon.plugins.media-keys volume-down ''
-    gsettings set org.gnome.settings-daemon.plugins.media-keys volume-up ''
-fi
-
-# Stop XFCE4 volume control
-if [ "$1" = "--pause-xfce4-volumed" ]; then
-    echo "killall xfce4-volumed*"
-    if killall -q xfce4-volumed; then
-        pause_xfce4_volumed="xfce4-volumed"
-    elif killall -q xfce4-volumed-pulse; then
-        pause_xfce4_volumed="xfce4-volumed-pulse"
-    fi
-    shift
-fi
 
 # Run the program
 "$@" &> /dev/null
 
-
-# Restore volume levels and mute status
-if [ -n "$max_volume" ]; then
-    cat "$PULSESTATE" | pacmd > /dev/null
-fi
-
-# Restore volume keys
-if [ -n "$pause_gnome_volume" ]; then
-    gsettings set org.gnome.settings-daemon.plugins.media-keys volume-mute 'XF86AudioMute'
-    gsettings set org.gnome.settings-daemon.plugins.media-keys volume-down 'XF86AudioLowerVolume'
-    gsettings set org.gnome.settings-daemon.plugins.media-keys volume-up 'XF86AudioRaiseVolume'
-fi
-
-# Restore volume keys
-if [ -n "$pause_xfce4_volumed" ]; then
-    "$pause_xfce4_volumed"
-fi
 
 ) 200>"$LOCKFILE"
 
