@@ -25,8 +25,8 @@ xdotool
 xfce4-appfinder
 xfce4-datetime-plugin
 xfce4-genmon-plugin
-xfce4-mixer
 xfce4-panel
+xfce4-pulseaudio-plugin
 xfce4-session
 xfce4-settings
 xfce4-terminal
