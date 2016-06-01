@@ -18,7 +18,8 @@ function install_syslinux {
 
     echo "UI menu.c32" >> "$SYSLINUX_CFG"
 
-    echo "Install syslinux:"
+    echo "Run these commands to configure set up your bootable device:"
+    echo "  # dosfslabel /dev/sdX multiboot"
     echo "  # dd bs=440 count=1 if=/usr/lib/syslinux/bios/mbr.bin of=/dev/sdX"
     echo "  # extlinux -i -d /<mountpoint>/syslinux"
 }
@@ -57,6 +58,8 @@ function set_boot_vars {
         set_ubuntu_boot_vars
     elif [[ "$ISOFILE" == *fedora*.iso ]]; then
         set_fedora_boot_vars
+    elif [[ "$ISOFILE" == *archlinux*.iso ]]; then
+        set_archlinux_boot_vars
     else
         echo "Unsupported ISO! $ISOFILE"
     fi
@@ -78,6 +81,15 @@ function set_fedora_boot_vars {
     kernel="/mnt/isolinux/vmlinuz0"
     initrd="/mnt/isolinux/initrd0.img"
     bootparams="root=live:CDLABEL=$(basename "$ISOFILE" .iso) rootfstype=auto iso-scan/filename=/${unpackdir}/$(basename "$ISOFILE")"
+}
+
+function set_archlinux_boot_vars {
+    version="$(basename "$ISOFILE" .iso | sed -e 's/archlinux-//' -e 's/-dual//')"
+    menulabel="ArchLinux $version"
+    unpackdir="distros/archlinux_$(generate_safe_filename "$version")"
+    kernel="/mnt/arch/boot/x86_64/vmlinuz"
+    initrd="/mnt/arch/boot/x86_64/archiso.img"
+    bootparams="img_label=multiboot img_loop=${unpackdir}/$(basename "$ISOFILE") archisobasedir=arch earlymodules=loop"
 }
 
 function generate_safe_filename {
