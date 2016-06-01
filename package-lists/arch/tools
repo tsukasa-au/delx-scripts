@@ -1,6 +1,7 @@
 atop
 bash-completion
 binutils
+cpio
 diffutils
 fdupes
 git
