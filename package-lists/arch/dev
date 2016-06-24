@@ -1,8 +1,10 @@
+aspell-en
 autoconf
 automake
 bison
 clang
 cmake
+emacs
 flex
 gcc
 gcc-libs
