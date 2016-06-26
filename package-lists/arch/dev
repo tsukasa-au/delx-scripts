@@ -9,6 +9,7 @@ flex
 gcc
 gcc-libs
 gdb
+hexedit
 intltool
 libtool
 m4
