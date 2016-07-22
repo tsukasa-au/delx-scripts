@@ -23,7 +23,7 @@ while true; do
         "bash --login -c 'screen -dR'" \
     && exit 0
     echo "Disconnected, waiting..."
-    tput tsl; echo -n "${hostname}: disconnected!"; tput fsl
+    echo -ne "\033]0;${hostname}: disconnected!\007"
     sleep 1
 done
 
