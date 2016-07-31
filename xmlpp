@@ -1,0 +1,9 @@
+#!/usr/bin/python3
+
+from lxml import etree
+import sys
+
+doc = etree.parse(sys.stdin)
+output = etree.tostring(doc, pretty_print=True)
+sys.stdout.buffer.write(output)
+

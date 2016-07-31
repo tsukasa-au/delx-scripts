@@ -1,0 +1,33 @@
+#!/usr/bin/python3
+
+import random, sys
+
+alnum_chars = list(filter(lambda c: c.isalnum(), map(chr, range(128))))
+full_chars = alnum_chars * 2 + list("!@#%^&*(){}[]/=?+_-;:,.<>")
+
+def generate(chars, length):
+    return "".join([random.choice(chars) for i in range(length)])
+
+def print_usage():
+    print("Usage: %s [length] [alnum|full]" % sys.argv[0])
+    sys.exit(1)
+
+if __name__ == "__main__":
+    if len(sys.argv) <= 1:
+        n = 20
+    elif sys.argv[1].isdigit():
+        n = int(sys.argv[1])
+    else:
+        print_usage()
+
+    if len(sys.argv) <= 2:
+        chars = alnum_chars
+    elif sys.argv[2] == "alnum":
+        chars = alnum_chars
+    elif sys.argv[2] == "full":
+        chars = full_chars
+    else:
+        print_usage()
+
+    print(generate(chars, n))
+
