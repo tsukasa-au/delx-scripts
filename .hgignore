@@ -1,4 +1,0 @@
-syntax: glob
-# ignore python byte compiled files
-*.py[oc]
-

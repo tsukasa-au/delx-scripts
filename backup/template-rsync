@@ -1,8 +1,0 @@
-#!/bin/bash
-
-function run_backup {
-    rsync -a --numeric-ids --delete my-host.example.com:/backup/my-host/ /backup/my-host/
-}
-
-. /backup/scripts/common
-
