@@ -8,12 +8,10 @@ import sys
 APTORPHAN_PATH = os.path.expanduser("~/.aptorphan")
 
 def run(cmd):
-    result = []
     for line in subprocess.check_output(cmd).decode("utf-8").split("\n"):
         line = line.strip()
         if line:
-            result.append(line)
-    return result
+            yield line
 
 def strip_comment(line):
     pos = line.find("#")
