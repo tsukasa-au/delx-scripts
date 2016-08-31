@@ -199,26 +199,37 @@ void print_percent(
     );
 }
 
-int main(void) {
+int main(int argc, char** argv) {
+    char* show_flags = "cmb";
+    if (argc == 2) {
+        show_flags = argv[1];
+    }
+
     printf("<txt>");
 
-    print_percent(
-        "cpu", "%",
-        read_cpu_percent(),
-        50, 100
-    );
+    if (strchr(show_flags, 'c')) {
+        print_percent(
+            "cpu", "%",
+            read_cpu_percent(),
+            50, 100
+        );
+    }
 
-    print_percent(
-        "mem", "%",
-        read_mem_percent(),
-        70, 100
-    );
+    if (strchr(show_flags, 'm')) {
+        print_percent(
+            "mem", "%",
+            read_mem_percent(),
+            70, 100
+        );
+    }
 
-    print_percent(
-        "batt", "%",
-        read_battery_percent(),
-        0, 25
-    );
+    if (strchr(show_flags, 'b')) {
+        print_percent(
+            "batt", "%",
+            read_battery_percent(),
+            0, 25
+        );
+    }
 
     printf("</txt>");
 
