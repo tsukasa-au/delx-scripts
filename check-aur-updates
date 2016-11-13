@@ -2,7 +2,7 @@
 
 set -e
 
-ls -1d /var/abs/aur/* | while read d; do
+find /var/abs/aur -mindepth 1 -maxdepth 1 -type d | while read d; do
     pushd "$d" > /dev/null
     git fetch
     if [ 0 -ne "$(git diff-index --cached origin/master | wc -l)" ]; then
