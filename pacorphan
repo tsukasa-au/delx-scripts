@@ -5,13 +5,152 @@ import subprocess
 import os
 import sys
 
-PACORPHAN_PATH = os.path.expanduser("~/.pacorphan")
+def main():
+    name = os.path.basename(sys.argv[0])
+    if name == "pacorphan":
+        pacorphan_main()
+    elif name == "aptorphan":
+        aptorphan_main()
+    else:
+        print("This script must be named pacorphan or aptorphan!", file=sys.stderr)
+        sys.exit(1)
 
-def run(cmd):
-    for line in subprocess.check_output(cmd).decode("utf-8").split("\n"):
-        line = line.strip()
-        if line:
-            yield line
+def pacorphan_main():
+    keep_pkg_list = load_keep_pkg_list("pacorphan")
+    unneeded_pkg_list = list(run(["pacman", "-Qttq"]))
+    installed_pkg_list = list(run(["pacman", "-Qq"]))
+    explicit_pkg_list = list(run(["pacman", "-Qeq"]))
+    mark_explicit_list = []
+    need_install_list = []
+
+    for pkg in keep_pkg_list:
+        if pkg in unneeded_pkg_list:
+            unneeded_pkg_list.remove(pkg)
+
+        if pkg in explicit_pkg_list:
+            explicit_pkg_list.remove(pkg)
+        else:
+            if pkg in installed_pkg_list:
+                mark_explicit_list.append(pkg)
+            else:
+                need_install_list.append(pkg)
+
+    if unneeded_pkg_list:
+        print("# Found packages to remove")
+        print("sudo pacman -R " + " ".join(unneeded_pkg_list))
+        print()
+
+    if explicit_pkg_list:
+        print("# Found explicitly installed packages to keep")
+        print("echo " + " ".join(explicit_pkg_list) + " | tr ' ' '\\n' >> ~/.pacorphan/keep")
+        print()
+
+    if mark_explicit_list:
+        print("# Found packages which should be marked as explicitly installed")
+        print("sudo pacman -D --asexplicit " + " ".join(mark_explicit_list))
+        print()
+
+    if need_install_list:
+        print("# Found packages which should be installed")
+        print("sudo pacman -S " + " ".join(need_install_list))
+        print()
+
+def aptorphan_main():
+    ensure_apt_config_is_sane()
+
+    keep_pkg_list = load_keep_pkg_list("aptorphan")
+    mark_explicit_list = []
+    need_install_list = []
+    installed_pkg_list = list(run(["aptitude", "search", "?or(~i!~aremove,~ainstall)", "-F", "%p"]))
+    explicit_pkg_list = list(run(["aptitude", "search", "?or(~i!~M!~aremove,~ainstall!~M)", "-F", "%p"]))
+
+    for pkg in keep_pkg_list:
+        if pkg in explicit_pkg_list:
+            explicit_pkg_list.remove(pkg)
+        else:
+            if pkg in installed_pkg_list:
+                mark_explicit_list.append(pkg)
+            else:
+                need_install_list.append(pkg)
+
+
+    if mark_explicit_list:
+        print("# Found packages which should be marked as explicitly installed")
+        print("sudo aptitude --schedule-only install " + " ".join([("'"+x+"&m'") for x in mark_explicit_list]))
+        print()
+
+    if need_install_list:
+        print("# Found packages which should be installed")
+        print("sudo aptitude --schedule-only install " + " ".join(need_install_list))
+        print()
+
+    if explicit_pkg_list:
+        print("# Found explicitly installed packages to keep or remove")
+        print("echo " + " ".join(explicit_pkg_list) + " | tr ' ' '\\n' >> ~/.aptorphan/keep")
+        print("sudo aptitude --schedule-only install " + " ".join([(x+"+M") for x in explicit_pkg_list]))
+        print()
+
+def ensure_apt_config_is_sane():
+    required_config = """
+APT::Install-Recommends "false";
+APT::Install-Suggests "false";
+APT::AutoRemove::RecommendsImportant "false";
+APT::AutoRemove::SuggestsImportant "false";
+""".strip().split("\n")
+
+    actual_config = run(["apt-config", "dump"])
+
+    missing_lines = []
+    for required_line in required_config:
+        for line in actual_config:
+            if line == required_line:
+                break
+        else:
+            missing_lines.append(required_line)
+    if missing_lines:
+        print("Missing apt-config, add these lines to /etc/apt/apt.conf.d/99recommends-disable")
+        print("\n".join(missing_lines))
+        sys.exit(1)
+
+
+def load_keep_pkg_list(name):
+    config_path = find_config_path(name)
+    if not os.path.isdir(config_path):
+        print("# WARNING, you should create a directory at %s" % config_path)
+        return []
+
+    result = []
+
+    for filename in sorted(os.listdir(config_path)):
+        if filename.startswith("."):
+            continue
+        full_filename = os.path.join(config_path, filename)
+        for pkg in codecs.open(full_filename, "r", "utf-8"):
+            pkg = strip_comment(pkg).strip()
+            if not pkg:
+                continue
+            if filename[0] != "~":
+                if pkg in result:
+                    print("# Duplicate entry:", pkg, "in file", filename)
+                    continue
+                result.append(pkg)
+            else:
+                if pkg not in result:
+                    print("# Redundant removal:", pkg, "in file", filename)
+                    continue
+                result.remove(pkg)
+
+    return result
+
+def find_config_path(name):
+    homedir_path = os.path.expanduser("~/.%s" % name)
+    if os.path.isdir(homedir_path):
+        return homedir_path
+
+    if "XDG_CONFIG_HOME" not in os.environ:
+        return os.path.expanduser("~/.config/%s" % name)
+    else:
+        return os.path.join(os.environ["XDG_CONFIG_HOME"], name)
 
 def strip_comment(line):
     pos = line.find("#")
@@ -19,73 +158,11 @@ def strip_comment(line):
         line = line[:pos]
     return line.strip()
 
+def run(cmd):
+    for line in subprocess.check_output(cmd).decode("utf-8").split("\n"):
+        line = line.strip()
+        if line:
+            yield line
 
-keep_pkg_list = []
-mark_explicit_list = []
-need_install_list = []
-unneeded_pkg_list = []
-installed_pkg_list = []
-explicit_pkg_list = []
-
-for filename in sorted(os.listdir(PACORPHAN_PATH)):
-    if filename.startswith("."):
-        continue
-    full_filename = os.path.join(PACORPHAN_PATH, filename)
-    for pkg in codecs.open(full_filename, "r", "utf-8"):
-        pkg = strip_comment(pkg).strip()
-        if not pkg:
-            continue
-        if filename[0] != "~":
-            if pkg in keep_pkg_list:
-                print("# Duplicate entry:", pkg, "in file", filename)
-                continue
-            keep_pkg_list.append(pkg)
-        else:
-            if pkg not in keep_pkg_list:
-                print("# Redundant removal:", pkg, "in file", filename)
-                continue
-            keep_pkg_list.remove(pkg)
-
-for pkg in run(["pacman", "-Qq"]):
-    installed_pkg_list.append(pkg)
-
-for pkg in run(["pacman", "-Qttq"]):
-    unneeded_pkg_list.append(pkg)
-
-for pkg in run(["pacman", "-Qeq"]):
-    explicit_pkg_list.append(pkg)
-
-
-for pkg in keep_pkg_list:
-    if pkg in unneeded_pkg_list:
-        unneeded_pkg_list.remove(pkg)
-
-    if pkg in explicit_pkg_list:
-        explicit_pkg_list.remove(pkg)
-    else:
-        if pkg in installed_pkg_list:
-            mark_explicit_list.append(pkg)
-        else:
-            need_install_list.append(pkg)
-
-
-if unneeded_pkg_list:
-    print("# Found packages to remove")
-    print("sudo pacman -R " + " ".join(unneeded_pkg_list))
-    print()
-
-if explicit_pkg_list:
-    print("# Found explicitly installed packages to keep")
-    print("echo " + " ".join(explicit_pkg_list) + " | tr ' ' '\\n' >> ~/.pacorphan/keep")
-    print()
-
-if mark_explicit_list:
-    print("# Found packages which should be marked as explicitly installed")
-    print("sudo pacman -D --asexplicit " + " ".join(mark_explicit_list))
-    print()
-
-if need_install_list:
-    print("# Found packages which should be installed")
-    print("sudo pacman -S " + " ".join(need_install_list))
-    print()
-
+if __name__ == "__main__":
+    main()
