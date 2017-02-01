@@ -19,7 +19,7 @@ function install_syslinux {
     echo "UI menu.c32" >> "$SYSLINUX_CFG"
 
     echo "Run these commands to configure set up your bootable device:"
-    echo "  # dosfslabel /dev/sdX multiboot"
+    echo "  # dosfslabel /dev/sdX1 multiboot"
     echo "  # dd bs=440 count=1 if=/usr/lib/syslinux/bios/mbr.bin of=/dev/sdX"
     echo "  # extlinux -i -d /<mountpoint>/syslinux"
 }
@@ -56,7 +56,7 @@ function umount_iso {
 function set_boot_vars {
     if [[ "$ISOFILE" == *ubuntu*.iso ]]; then
         set_ubuntu_boot_vars
-    elif [[ "$ISOFILE" == *fedora*.iso ]]; then
+    elif [[ "$ISOFILE" == *Fedora*.iso ]]; then
         set_fedora_boot_vars
     elif [[ "$ISOFILE" == *archlinux*.iso ]]; then
         set_archlinux_boot_vars
@@ -78,8 +78,8 @@ function set_fedora_boot_vars {
     version="$(basename "$ISOFILE" .iso | sed 's/.*x86_64-//')"
     menulabel="Fedora $version"
     unpackdir="distros/fedora_$(generate_safe_filename "$version")"
-    kernel="/mnt/isolinux/vmlinuz0"
-    initrd="/mnt/isolinux/initrd0.img"
+    kernel="/mnt/isolinux/vmlinuz"
+    initrd="/mnt/isolinux/initrd.img"
     bootparams="root=live:CDLABEL=$(basename "$ISOFILE" .iso) rootfstype=auto iso-scan/filename=/${unpackdir}/$(basename "$ISOFILE")"
 }
 
