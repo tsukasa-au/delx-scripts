@@ -41,8 +41,9 @@ def pacorphan_main():
         print()
 
     if explicit_pkg_list:
-        print("# Found explicitly installed packages to keep")
+        print("# Found explicitly installed packages to keep or remove")
         print("echo " + " ".join(explicit_pkg_list) + " | tr ' ' '\\n' >> ~/.pacorphan/keep")
+        print("sudo pacman -D --asdeps " + " ".join(explicit_pkg_list))
         print()
 
     if mark_explicit_list:
