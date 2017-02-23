@@ -1,0 +1,75 @@
+#!/bin/bash
+
+set -eu
+
+function usage {
+    echo "Usage: $0 [--remote origin] [--age ndays]"
+    echo
+    echo "This tool will not change your repository, the output is a list of git push commands you can use to delete old branches."
+    echo
+    echo "Note that the arguments must be passed in the order listed above."
+    exit 1
+}
+
+if [ "${1:-}" = "--help" ]; then
+    usage
+fi
+
+remote="origin"
+if [ "${1:-}" = "--remote" ]; then
+    remote="$2"
+    shift
+    shift
+fi
+
+age_days=30
+if [ "${1:-}" = "--age" ]; then
+    age_days="$2"
+    shift
+    shift
+fi
+age_seconds=$((age_days*24*3600))
+
+if [ -n "${1:-}" ]; then
+    usage
+fi
+
+
+echo "## Fetching latest changes from $remote"
+git fetch -p "${remote}"
+
+
+echo "## Constructing list of revisions in master and tags"
+safe_revs_file="$(mktemp -t gitcleanup.XXXXXX)"
+git rev-list origin/master --tags > "$safe_revs_file"
+
+
+echo "## Checking for branches to delete"
+now="$(date +%s)"
+git ls-remote --heads "$remote" | while read line; do
+    set $line
+    rev="$1"
+    branch="$2"
+    timestamp="$(git rev-list --format=format:'%ct' --max-count=1 "$rev"|tail -n1)"
+    age=$((now-timestamp))
+
+    if [ "$branch" = "refs/heads/master" ]; then
+        continue;
+    fi
+
+    if grep -q "$rev" "$safe_revs_file"; then
+        echo git push "$remote" ":$branch" "# remove merged into master or tag"
+        continue
+    fi
+
+    if [ "$age" -gt "$age_seconds" ]; then
+        branch_name="${branch##refs/heads/}"
+        echo git tag "archived/$branch_name" "$rev" "# create tag for older than $age_days days branch"
+        echo git push "$remote" tag "archived/$branch_name" "# push tag for older than $age_days days branch"
+        echo git push "$remote" ":$branch" "# remove older than $age_days days"
+        continue
+    fi
+done
+
+rm -f "$safe_revs_file"
+
