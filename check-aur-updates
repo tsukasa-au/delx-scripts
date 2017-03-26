@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -eu
+
+pacman -Qm | while read pkg installed_version; do
+    aur_version="$(curl -gsSf "https://aur.archlinux.org/rpc/?v=5&type=info&arg[]=${pkg}" | jq -r '.results[0].Version')"
+    if [ "$installed_version" != "$aur_version" ]; then
+        echo "New ${pkg}: $installed_version -> $aur_version"
+    fi
+done

@@ -1,0 +1,46 @@
+#!/bin/bash
+
+set -e
+
+PKGNAME="$1"
+if [ -z "$PKGNAME" ]; then
+    echo "Usage: $0 pkgname"
+    exit 1
+fi
+
+function enter_directory {
+    mkdir -p "$1"
+    cd "$1"
+}
+
+function fetch_latest_changes {
+    if [ ! -d .git ]; then
+        git init
+        git remote add origin "https://aur.archlinux.org/${PKGNAME}"
+    fi
+    git fetch
+    git reset origin/master
+}
+
+function show_diff {
+    git diff -R
+}
+
+function ask_user_to_continue {
+    read -p "Ok? (y/n) " ok
+    if [ "$ok" != "y" ]; then
+        return 1
+    fi
+}
+
+function build_and_install {
+    git clean -xf
+    git checkout .
+    makepkg -sri
+}
+
+enter_directory "/var/abs/aur/${PKGNAME}"
+fetch_latest_changes
+show_diff
+ask_user_to_continue
+build_and_install
