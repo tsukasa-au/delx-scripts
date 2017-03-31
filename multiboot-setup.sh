@@ -17,7 +17,7 @@ function cmd_format {
     sudo -k
     DISK_DEVICE="$1"
     PARTITION_DEVICE="${DISK_DEVICE}1"
-    echo -ne 'label: dos\ntype=83, bootable\n' | sudo sfdisk "$DISK_DEVICE"
+    echo -ne 'label: dos\ntype=c, bootable\n' | sudo sfdisk "$DISK_DEVICE"
     sudo mkfs.vfat -n "$PARTITION_LABEL" "$PARTITION_DEVICE"
 }
 
