@@ -6,6 +6,8 @@ ISO_MNT="/mnt/iso"
 PARTITION_LABEL="multiboot"
 MULTIBOOT_MNT="/mnt/multiboot"
 GRUB_CFG="${MULTIBOOT_MNT}/grub/grub.cfg"
+SYSLINUX_VERSION="6.03"
+SYSLINUX_URL="https://www.kernel.org/pub/linux/utils/boot/syslinux/syslinux-${SYSLINUX_VERSION}.tar.gz"
 
 function cmd_format {
     if [ -z "${1:-}" ]; then
@@ -53,6 +55,7 @@ function install_grub_cfg {
     cat <<EOT >> "$GRUB_CFG"
 insmod all_video
 insmod part_msdos
+insmod progress
 search --set=root --label $PARTITION_LABEL
 
 EOT
@@ -86,30 +89,14 @@ function cmd_add_iso {
     set -x
 
     ISO_FILE="$1"
-    mount_iso
-    setup_iso
-    umount_iso
-}
 
-function mount_iso {
-    umount_iso
-    sudo mkdir -p "$ISO_MNT"
-    sudo mount "$ISO_FILE" "$ISO_MNT"
-}
-
-function umount_iso {
-    sudo umount "$ISO_MNT" || true
-    sudo rmdir "$ISO_MNT" || true
-}
-
-function setup_iso {
     if [[ "$ISO_FILE" == *ubuntu*.iso ]]; then
         setup_ubuntu
     elif [[ "$ISO_FILE" == *Fedora*.iso ]]; then
         setup_fedora
     elif [[ "$ISO_FILE" == *archlinux*.iso ]]; then
         setup_archlinux
-    elif [[ "$ISO_FILE" == *FD12CD.iso ]]; then
+    elif [[ "$ISO_FILE" == *FD12*.zip ]]; then
         setup_freedos
     else
         echo "Unsupported ISO! $ISO_FILE"
@@ -119,7 +106,7 @@ function setup_iso {
 function setup_ubuntu {
     local version="$(basename "$ISO_FILE" | cut -d- -f2)"
 
-    copy_iso_data "$ISO_FILE" "${MULTIBOOT_MNT}/"
+    copy_iso_data
 
     cat <<EOT >> "$GRUB_CFG"
 menuentry 'Ubuntu $version' {
@@ -134,7 +121,7 @@ EOT
 function setup_fedora {
     local version="$(basename "$ISO_FILE" .iso | sed 's/.*x86_64-\([0-9\.]*\)-.*/\1/')"
 
-    copy_iso_data "$ISO_FILE" "${MULTIBOOT_MNT}/"
+    copy_iso_data
 
     cat <<EOT >> "$GRUB_CFG"
 menuentry 'Fedora $version' {
@@ -149,7 +136,7 @@ EOT
 function setup_archlinux {
     local version="$(basename "$ISO_FILE" .iso | sed -e 's/archlinux-//' -e 's/-dual//')"
 
-    copy_iso_data "$ISO_FILE" "${MULTIBOOT_MNT}/"
+    copy_iso_data
 
     cat <<EOT >> "$GRUB_CFG"
 menuentry 'Arch Linux $version' {
@@ -162,16 +149,14 @@ EOT
 }
 
 function setup_freedos {
-    local freedos_dir="${MULTIBOOT_MNT}/freedos/"
-
-    mkdir -p "$freedos_dir"
-    copy_iso_data "${ISO_MNT}/" "$freedos_dir"
+    install_memdisk
+    copy_iso_data
 
     cat <<EOT >> "$GRUB_CFG"
 menuentry 'FreeDOS' {
   if [ \${grub_platform} = pc ]; then
-    linux16 /freedos/ISOLINUX/MEMDISK
-    initrd16 /freedos/ISOLINUX/FDBOOT.img
+    linux16 /memdisk raw
+    initrd16 /$(basename "$ISO_FILE")
   else
     echo "FreeDOS only works with BIOS boot."
     sleep 3
@@ -182,10 +167,26 @@ EOT
 }
 
 function copy_iso_data {
-    local distro_data="$1"
-    local dest="$2"
+    rsync --size-only --progress "$ISO_FILE" "${MULTIBOOT_MNT}/"
+}
 
-    rsync --recursive --size-only --progress "$distro_data" "$dest"
+function install_memdisk {
+    local dest="${MULTIBOOT_MNT}/memdisk"
+
+    if [ -f "$dest" ]; then
+        return
+    fi
+
+    for maybe in /usr/lib/syslinux/bios/memdisk /usr/lib/syslinux/memdisk; do
+        if [ -f "$maybe" ]; then
+            cp "$maybe" "$dest"
+            return
+        fi
+    done
+
+    curl --fail "$SYSLINUX_URL" | \
+        tar xz --strip-components=3 -C "$MULTIBOOT_MNT" \
+            "syslinux-${SYSLINUX_VERSION}/bios/memdisk/memdisk"
 }
 
 CMD="cmd_${1:-}"
