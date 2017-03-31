@@ -62,13 +62,9 @@ EOT
 }
 
 function cmd_mount {
-    if [ -z "${1:-}" ]; then
-        echo "Usage: $0 mount /dev/sdX1"
-        exit 1
-    fi
     set -x
 
-    PARTITION_DEVICE="$1"
+    PARTITION_DEVICE="$(readlink -f /dev/disk/by-label/multiboot)"
     sudo mkdir -p "$MULTIBOOT_MNT"
     while sudo umount "$PARTITION_DEVICE"; do true; done
     sudo mount "$PARTITION_DEVICE" "$MULTIBOOT_MNT" -o "uid=$(whoami)"
