@@ -10,7 +10,7 @@ SYSLINUX_VERSION="6.03"
 SYSLINUX_URL="https://www.kernel.org/pub/linux/utils/boot/syslinux/syslinux-${SYSLINUX_VERSION}.tar.gz"
 
 function cmd_format {
-    if [ -z "${1:-}" ]; then
+    if [ ! -b "${1:-}" ]; then
         echo "Usage: $0 format /dev/sdX"
         exit 1
     fi
@@ -25,6 +25,10 @@ function cmd_format {
 
 function cmd_bootloader {
     DISK_DEVICE="$(mount|grep /mnt/multiboot|cut -d' ' -f1|sed 's/[0-9]*$//')"
+    if [ ! -b "$DISK_DEVICE" ]; then
+        echo "ERROR! Could not find disk to install bootloader. Try using mount."
+        exit 1
+    fi
     set -x
 
     sudo -k
@@ -78,7 +82,7 @@ function cmd_umount {
 }
 
 function cmd_add_iso {
-    if [ -z "${1:-}" ]; then
+    if [ ! -f "${1:-}" ]; then
         echo "Usage: $0 add_iso /path/to/ubuntu.iso"
         exit 1
     fi
