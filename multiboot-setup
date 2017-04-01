@@ -84,45 +84,58 @@ function cmd_add_iso {
     fi
     set -x
 
-    ISO_FILE="$1"
+    ISO_FILENAME="$1"
+    ISO_BASENAME="$(basename "$ISO_FILENAME")"
+    local f="$(basename "$ISO_FILENAME")"
 
-    if [[ "$ISO_FILE" == *ubuntu*.iso ]]; then
+    if [[ "$ISO_BASENAME" == ubuntu-*-desktop-*.iso ]]; then
         setup_ubuntu
-    elif [[ "$ISO_FILE" == *Fedora*.iso ]]; then
+    elif [[ "$ISO_BASENAME" == debian-live-*.iso ]]; then
+        setup_debian
+    elif [[ "$ISO_BASENAME" == Fedora-Workstation-Live-*.iso ]]; then
         setup_fedora
-    elif [[ "$ISO_FILE" == *archlinux*.iso ]]; then
+    elif [[ "$ISO_BASENAME" == archlinux-*.iso ]]; then
         setup_archlinux
-    elif [[ "$ISO_FILE" == *FD12*.zip ]]; then
+    elif [[ "$ISO_BASENAME" == FD12*.zip ]]; then
         setup_freedos
     else
-        echo "Unsupported ISO! $ISO_FILE"
+        echo "Unsupported ISO! $ISO_BASENAME"
     fi
 }
 
 function setup_ubuntu {
-    local version="$(basename "$ISO_FILE" | cut -d- -f2)"
-
     copy_iso_data
 
     cat <<EOT >> "$GRUB_CFG"
-menuentry 'Ubuntu $version' {
-  loopback loop /$(basename "$ISO_FILE")
-  linux (loop)/casper/vmlinuz.efi boot=casper quiet iso-scan/filename=/$(basename "$ISO_FILE")
+menuentry '$ISO_BASENAME' {
+  loopback loop /$ISO_BASENAME
+  linux (loop)/casper/vmlinuz.efi boot=casper quiet iso-scan/filename=/$ISO_BASENAME
   initrd (loop)/casper/initrd.lz
 }
 
 EOT
 }
 
-function setup_fedora {
-    local version="$(basename "$ISO_FILE" .iso | sed 's/.*x86_64-\([0-9\.]*\)-.*/\1/')"
-
+function setup_debian {
     copy_iso_data
 
     cat <<EOT >> "$GRUB_CFG"
-menuentry 'Fedora $version' {
-  loopback loop /$(basename "$ISO_FILE")
-  linux (loop)/isolinux/vmlinuz root=live:CDLABEL=$(blkid -s LABEL -o value "$ISO_FILE") rd.live.image quiet iso-scan/filename=/$(basename "$ISO_FILE")
+menuentry '$ISO_BASENAME' {
+  loopback loop /$ISO_BASENAME
+  linux (loop)/live/vmlinuz boot=live components findiso=/$ISO_BASENAME
+  initrd (loop)/live/initrd.img
+}
+
+EOT
+}
+
+function setup_fedora {
+    copy_iso_data
+
+    cat <<EOT >> "$GRUB_CFG"
+menuentry '$ISO_BASENAME' {
+  loopback loop /$ISO_BASENAME
+  linux (loop)/isolinux/vmlinuz root=live:CDLABEL=$(blkid -s LABEL -o value "$ISO_FILENAME") rd.live.image quiet iso-scan/filename=/$ISO_BASENAME
   initrd (loop)/isolinux/initrd.img
 }
 
@@ -130,14 +143,12 @@ EOT
 }
 
 function setup_archlinux {
-    local version="$(basename "$ISO_FILE" .iso | sed -e 's/archlinux-//' -e 's/-dual//')"
-
     copy_iso_data
 
     cat <<EOT >> "$GRUB_CFG"
-menuentry 'Arch Linux $version' {
-  loopback loop /$(basename "$ISO_FILE")
-  linux (loop)/arch/boot/x86_64/vmlinuz img_label=${PARTITION_LABEL} img_loop=$(basename "$ISO_FILE") archisobasedir=arch earlymodules=loop
+menuentry '$ISO_BASENAME' {
+  loopback loop /$ISO_BASENAME
+  linux (loop)/arch/boot/x86_64/vmlinuz img_label=${PARTITION_LABEL} img_loop=$ISO_BASENAME archisobasedir=arch earlymodules=loop
   initrd (loop)/arch/boot/x86_64/archiso.img
 }
 
@@ -149,10 +160,10 @@ function setup_freedos {
     copy_iso_data
 
     cat <<EOT >> "$GRUB_CFG"
-menuentry 'FreeDOS' {
+menuentry '$ISO_BASENAME' {
   if [ \${grub_platform} = pc ]; then
     linux16 /memdisk raw
-    initrd16 /$(basename "$ISO_FILE")
+    initrd16 /$ISO_BASENAME
   else
     echo "FreeDOS only works with BIOS boot."
     sleep 3
@@ -163,7 +174,7 @@ EOT
 }
 
 function copy_iso_data {
-    rsync --size-only --progress "$ISO_FILE" "${MULTIBOOT_MNT}/"
+    rsync --size-only --progress "$ISO_FILENAME" "${MULTIBOOT_MNT}/"
 }
 
 function install_memdisk {
