@@ -5,7 +5,6 @@ set -eu
 ISO_MNT="/mnt/iso"
 PARTITION_LABEL="multiboot"
 MULTIBOOT_MNT="/mnt/multiboot"
-GRUB_CFG="${MULTIBOOT_MNT}/grub/grub.cfg"
 SYSLINUX_VERSION="6.03"
 SYSLINUX_URL="https://www.kernel.org/pub/linux/utils/boot/syslinux/syslinux-${SYSLINUX_VERSION}.tar.gz"
 
@@ -34,7 +33,6 @@ function cmd_bootloader {
     sudo -k
     install_grub_bios
     install_grub_efi
-    install_grub_cfg
 }
 
 function install_grub_bios {
@@ -52,17 +50,6 @@ function install_grub_efi {
         --efi-directory="$MULTIBOOT_MNT" \
         --boot-directory="$MULTIBOOT_MNT" \
         "$DISK_DEVICE"
-}
-
-function install_grub_cfg {
-    mkdir -p "$(dirname "$GRUB_CFG")"
-    cat <<EOT >> "$GRUB_CFG"
-insmod all_video
-insmod part_msdos
-insmod progress
-search --set=root --label $PARTITION_LABEL
-
-EOT
 }
 
 function cmd_mount {
@@ -90,7 +77,10 @@ function cmd_add_iso {
 
     ISO_FILENAME="$1"
     ISO_BASENAME="$(basename "$ISO_FILENAME")"
+    GRUB_PART_CFG="${MULTIBOOT_MNT}/grub/parts/${ISO_BASENAME}"
     local f="$(basename "$ISO_FILENAME")"
+
+    mkdir -p "$(dirname "$GRUB_PART_CFG")"
 
     if [[ "$ISO_BASENAME" == ubuntu-*-desktop-*.iso ]]; then
         setup_ubuntu
@@ -105,12 +95,15 @@ function cmd_add_iso {
     else
         echo "Unsupported ISO! $ISO_BASENAME"
     fi
+
+    delete_stray_grub_parts
+    print_grub_cfg > "${MULTIBOOT_MNT}/grub/grub.cfg"
 }
 
 function setup_ubuntu {
     copy_iso_data
 
-    cat <<EOT >> "$GRUB_CFG"
+    cat <<EOT > "$GRUB_PART_CFG"
 menuentry '$ISO_BASENAME' {
   loopback loop /$ISO_BASENAME
   linux (loop)/casper/vmlinuz.efi boot=casper quiet iso-scan/filename=/$ISO_BASENAME
@@ -123,7 +116,7 @@ EOT
 function setup_debian {
     copy_iso_data
 
-    cat <<EOT >> "$GRUB_CFG"
+    cat <<EOT > "$GRUB_PART_CFG"
 menuentry '$ISO_BASENAME' {
   loopback loop /$ISO_BASENAME
   linux (loop)/live/vmlinuz boot=live components findiso=/$ISO_BASENAME
@@ -136,7 +129,7 @@ EOT
 function setup_fedora {
     copy_iso_data
 
-    cat <<EOT >> "$GRUB_CFG"
+    cat <<EOT > "$GRUB_PART_CFG"
 menuentry '$ISO_BASENAME' {
   loopback loop /$ISO_BASENAME
   linux (loop)/isolinux/vmlinuz root=live:CDLABEL=$(blkid -s LABEL -o value "$ISO_FILENAME") rd.live.image quiet iso-scan/filename=/$ISO_BASENAME
@@ -149,7 +142,7 @@ EOT
 function setup_archlinux {
     copy_iso_data
 
-    cat <<EOT >> "$GRUB_CFG"
+    cat <<EOT > "$GRUB_PART_CFG"
 menuentry '$ISO_BASENAME' {
   loopback loop /$ISO_BASENAME
   linux (loop)/arch/boot/x86_64/vmlinuz img_label=${PARTITION_LABEL} img_loop=$ISO_BASENAME archisobasedir=arch earlymodules=loop
@@ -163,7 +156,7 @@ function setup_freedos {
     install_memdisk
     copy_iso_data
 
-    cat <<EOT >> "$GRUB_CFG"
+    cat <<EOT > "$GRUB_PART_CFG"
 menuentry '$ISO_BASENAME' {
   if [ \${grub_platform} = pc ]; then
     linux16 /memdisk raw
@@ -198,6 +191,27 @@ function install_memdisk {
     curl --fail "$SYSLINUX_URL" | \
         tar xz --strip-components=3 -C "$MULTIBOOT_MNT" \
             "syslinux-${SYSLINUX_VERSION}/bios/memdisk/memdisk"
+}
+
+function delete_stray_grub_parts {
+    pushd "${MULTIBOOT_MNT}/grub/parts" &> /dev/null
+    comm -13 \
+         <(find "${MULTIBOOT_MNT}/" -maxdepth 1 -type f -printf '%f\n'|sort) \
+         <(find "${MULTIBOOT_MNT}/grub/parts/" -type f -printf '%f\n'|sort) \
+         | xargs -d '\n' -r rm
+    popd &> /dev/null
+}
+
+function print_grub_cfg {
+    cat <<EOT
+insmod all_video
+insmod part_msdos
+insmod progress
+search --set=root --label $PARTITION_LABEL
+
+EOT
+
+    cat "${MULTIBOOT_MNT}/grub/parts/"*
 }
 
 CMD="cmd_${1:-}"
