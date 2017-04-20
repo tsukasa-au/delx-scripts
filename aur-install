@@ -34,7 +34,7 @@ function ask_user_to_continue {
 }
 
 function build_and_install {
-    git clean -xf
+    git clean -x -d -e '*.pkg.*' -f
     git checkout .
     makepkg -sri
 }
