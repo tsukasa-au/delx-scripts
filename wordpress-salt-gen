@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+
+import random
+
+names = [
+    "AUTH_KEY",
+    "AUTH_SALT",
+    "LOGGED_IN_KEY",
+    "LOGGED_IN_SALT",
+    "NONCE_KEY",
+    "NONCE_SALT",
+    "SECURE_AUTH_KEY",
+    "SECURE_AUTH_SALT",
+]
+
+alnum_chars = list(filter(lambda c: c.isalnum(), map(chr, range(128))))
+
+def generate():
+    return "".join([random.choice(alnum_chars) for i in range(40)])
+
+for name in names:
+    print("fastcgi_param %s '%s';" % (name.ljust(20), generate()))
