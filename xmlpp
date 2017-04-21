@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
-from lxml import etree
+import xml.dom.minidom
 import sys
 
-doc = etree.parse(sys.stdin)
-output = etree.tostring(doc, pretty_print=True)
-sys.stdout.buffer.write(output)
+doc = xml.dom.minidom.parse(sys.stdin)
+doc.writexml(sys.stdout, addindent="    ", newl="\n")
 
