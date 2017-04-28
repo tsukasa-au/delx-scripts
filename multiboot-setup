@@ -2,7 +2,6 @@
 
 set -eu
 
-ISO_MNT="/mnt/iso"
 PARTITION_LABEL="multiboot"
 MULTIBOOT_MNT="/mnt/multiboot"
 SYSLINUX_VERSION="6.03"
@@ -78,7 +77,6 @@ function cmd_add_iso {
     ISO_FILENAME="$1"
     ISO_BASENAME="$(basename "$ISO_FILENAME")"
     GRUB_PART_CFG="${MULTIBOOT_MNT}/grub/parts/${ISO_BASENAME}"
-    local f="$(basename "$ISO_FILENAME")"
 
     mkdir -p "$(dirname "$GRUB_PART_CFG")"
 
