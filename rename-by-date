@@ -1,8 +1,139 @@
-#!/bin/bash
+#!/usr/bin/python3
 
-num=1
-ls -tr | while read f; do
-	mv "$f" "$num $f"
-	let "num=num+1"
-done
+import argparse
+import datetime
+import os
+import subprocess
+import sys
+
+
+def read_directories(src_directories):
+    result = []
+    for src_directory in src_directories:
+        for root, dirnames, filenames in os.walk(src_directory):
+            for filename in filenames:
+                filename = os.path.join(root, filename)
+                result.append(filename)
+    result.sort()
+    return result
+
+def get_timestamp(filename):
+    ext = os.path.splitext(filename.lower())[1]
+
+    if ext == ".jpg":
+        return get_jpg_timestamp(filename)
+
+    if ext == ".mp4":
+        return get_mp4_timestamp(filename)
+
+    raise NotImplementedError("Unsupported extension: " + ext)
+
+def get_mp4_timestamp(filename):
+    output = subprocess.check_output([
+        "ffprobe", filename, "-show_format", "-v", "quiet",
+    ]).decode("utf-8")
+    line = [line for line in output.split("\n") if line.startswith("TAG:creation_time=")][0]
+    value = line.split("=")[1].split(".")[0]
+    return datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S")
+
+def get_jpg_timestamp(filename):
+    output = subprocess.check_output([
+        "exiv2", "-pt", "-g", "Exif.Photo.DateTimeOriginal", filename
+    ]).decode("utf-8")
+    first_line = output.split("\n")[0]
+    timestamp = " ".join(first_line.split()[-2:])
+    return datetime.datetime.strptime(timestamp, "%Y:%m:%d %H:%M:%S")
+
+class FilesByDate(object):
+    def __init__(self, dest, src_directories):
+        self.dest = dest
+        self.src_directories = src_directories
+
+    def plan(self):
+        sorted_filenames = self.get_sorted_filenames()
+
+        for i, filename in enumerate(sorted_filenames, 1):
+            yield filename, self.get_new_filename(filename, i)
+
+    def get_sorted_filenames(self):
+        src_filenames = read_directories(self.src_directories)
+
+        ts_filenames = []
+        for filename in src_filenames:
+            timestamp = get_timestamp(filename)
+            ts_filenames.append((timestamp, filename))
+        ts_filenames.sort()
+
+        return [filename for _, filename in sorted(ts_filenames)]
+
+    def get_new_filename(self, orig_filename, i):
+        prefix = "S" + str(i).zfill(3) + "_"
+        orig_filename = os.path.basename(orig_filename)
+        return os.path.join(self.dest, prefix + orig_filename)
+
+class DirectoryFanout(object):
+    def __init__(self, dest, src_directories):
+        self.dest = dest
+        self.src_directories = src_directories
+
+    def plan(self):
+        src_filenames = read_directories(self.src_directories)
+
+        for filename in src_filenames:
+            timestamp = get_timestamp(filename)
+            yield filename, self.get_new_filename(filename, timestamp)
+
+    def get_new_filename(self, orig_filename, timestamp):
+        prefix = timestamp.strftime("%Y-%m-%d") + "/"
+        orig_filename = os.path.basename(orig_filename)
+        return os.path.join(self.dest, prefix + orig_filename)
+
+def print_plan(plan):
+    for orig_filename, new_filename in plan:
+        print("    ", orig_filename, "->", new_filename)
+
+def execute_plan(plan):
+    for orig_filename, new_filename in plan:
+        os.makedirs(os.path.dirname(new_filename), exist_ok=True)
+        os.link(orig_filename, new_filename)
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Relink photos based on EXIF dates")
+
+    parser.add_argument("--dry-run", action="store_true")
+
+    parser.add_argument("dest", nargs=1)
+    parser.add_argument("src", nargs="+")
+
+    action_group = parser.add_mutually_exclusive_group(required=True)
+
+    action_group.add_argument("--directory-fanout", action="store_true",
+        help="Create directories with names like 2015-01-01, place files into them")
+
+    action_group.add_argument("--rename-files", action="store_true",
+        help="Rename files from different cameras based on timestamps")
+
+    args = parser.parse_args()
+    args.dest = args.dest[0]
+    return args
+
+def main():
+    args = parse_args()
+
+    def planner():
+        raise NotImplementedError()
+
+    if args.directory_fanout:
+        planner = DirectoryFanout(args.dest, args.src).plan
+    elif args.rename_files:
+        planner = FilesByDate(args.dest, args.src).plan
+
+    plan = planner()
+    if args.dry_run:
+        print_plan(plan)
+    else:
+        execute_plan(plan)
+
+if __name__ == "__main__":
+    main()
 
