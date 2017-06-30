@@ -10,6 +10,7 @@
 
 
 crypto_keyfile="/crypto_keyfile.bin"
+reboot_cmd="${1:-sudo reboot}"
 
 if [ ! -f "$crypto_keyfile" ]; then
     echo "Failed to find $crypto_keyfile"
@@ -25,4 +26,4 @@ fi
 
 set -ex
 sudo cryptsetup luksAddKey "$device_filename" "$crypto_keyfile" --key-slot 7
-sudo reboot
+$reboot_cmd
