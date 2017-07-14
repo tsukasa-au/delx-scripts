@@ -1,9 +1,95 @@
-#!/bin/bash
+#!/usr/bin/env node
 
-iface="$(iw dev|grep Interface|awk '{print $2}')"
-sudo /bin/true
-sudo iw dev "$iface" scan |\
-egrep '^BSS|SSID|signal|DS Parameter set' |\
-sed 's/BSS/\nBSS/' |\
-less
+const {exec} = require('child_process');
 
+function execAsync(command, opts) {
+    return new Promise((resolve, reject) => {
+        exec(command, opts, (error, stdout, stderr) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve({stdout, stderr});
+            }
+        });
+    });
+}
+
+function sleep(n) {
+    return new Promise((resolve) => setTimeout(resolve, n));
+}
+
+async function findInterface() {
+    const {stdout} = await execAsync('iw dev');
+    const lines = stdout.split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.startsWith('Interface '))
+        .map((line) => line.split(' ')[1]);
+    return lines[0];
+}
+
+async function scanInterface(interface) {
+    const {stdout} = await execAsync(`sudo iw dev ${interface} scan`);
+
+    const results = [];
+    let partial = null;
+
+    for (let line of stdout.split('\n')) {
+        if (line.startsWith('BSS ')) {
+            finishPartial();
+            partial = {};
+            partial.bssid = line.match(/[a-z0-9:]+/)[0];
+        }
+
+        line = line.trim()
+        if (line.startsWith('SSID: ')) {
+            partial.ssid = line.split(':')[1].trim();
+        }
+        if (line.startsWith('signal: ')) {
+            partial.signal = line.split(':')[1].trim();
+        }
+        if (line.startsWith('DS Parameter set: channel')) {
+            partial.channel = line.split(':')[1].trim();
+        }
+    }
+
+    function finishPartial() {
+        if (!partial) {
+            return;
+        }
+
+        partial.ssid = partial.ssid || '';
+        partial.channel = partial.channel || '';
+
+        const sortKey = [
+            parseFloat(partial.signal),
+            parseInt(partial.channel.split(' ')[1])
+        ];
+
+        results.push([sortKey, partial]);
+    }
+
+    return results
+        .sort()
+        .map(([_, {bssid, ssid, signal, channel}]) => {
+            ssid = ssid.padStart(40, ' ');
+            channel = channel.padEnd(10, ' ');
+            return `${signal}  ${channel}  ${ssid}  ${bssid}`;
+        })
+        .join('\n') + '\n';
+}
+
+async function main() {
+    const interface = await findInterface();
+
+    for (;;) {
+        const scanResult = await scanInterface(interface).catch((err) => err.toString());
+        process.stdout.write('\033[2J\033[0f');
+        process.stdout.write(scanResult);
+        await sleep(3000);
+    }
+}
+
+main().catch((err) => {
+    console.log('Unhandled error!', err);
+    process.exit(1);
+});
