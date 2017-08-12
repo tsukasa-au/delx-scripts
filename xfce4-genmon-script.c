@@ -128,16 +128,15 @@ int read_cpu_percent() {
     return 100 - (int)round(idle_jiffys_per_cpu_second);
 }
 
-int read_mem_percent() {
+int read_mem_free_mibis() {
     char* meminfo = read_file("/proc/meminfo");
     if (meminfo == NULL) {
         return -1;
     }
 
-    int mem_total = -1;
     int mem_free = -1;
 
-    while (*meminfo && (mem_total < 0 || mem_free < 0)) {
+    while (*meminfo && mem_free < 0) {
         char* line = read_next_line(&meminfo);
         if (line == NULL) {
             break;
@@ -151,21 +150,17 @@ int read_mem_percent() {
             return -1;
         }
 
-        if (strcmp(key, "MemTotal") == 0) {
-            mem_total = parse_int(value_str);
-        } else if (strcmp(key, "MemAvailable") == 0) {
+        if (strcmp(key, "MemAvailable") == 0) {
             mem_free = parse_int(value_str);
         }
     }
 
-    if (mem_total < 0 || mem_free < 0) {
-        fprintf(stderr, "Failed to find MemTotal and MemAvailable in /proc/meminfo\n");
+    if (mem_free < 0) {
+        fprintf(stderr, "Failed to find MemAvailable in /proc/meminfo\n");
         return -1;
     }
 
-    int mem_used = mem_total - mem_free;
-
-    return (int)round((double)mem_used / (double)mem_total * 100);
+    return (int)round((double)mem_free / 1024);
 }
 
 int read_battery_percent() {
@@ -179,7 +174,7 @@ int read_battery_percent() {
     return parse_int(percent_str);
 }
 
-void print_percent(
+void print_red_threshold(
     char* name, char* units,
     int value,
     int red_low, int red_high
@@ -208,7 +203,7 @@ int main(int argc, char** argv) {
     printf("<txt>");
 
     if (strchr(show_flags, 'c')) {
-        print_percent(
+        print_red_threshold(
             "cpu", "%",
             read_cpu_percent(),
             50, 100
@@ -216,15 +211,15 @@ int main(int argc, char** argv) {
     }
 
     if (strchr(show_flags, 'm')) {
-        print_percent(
-            "mem", "%",
-            read_mem_percent(),
-            70, 100
+        print_red_threshold(
+            "mem", " MiB",
+            read_mem_free_mibis(),
+            0, 512
         );
     }
 
     if (strchr(show_flags, 'b')) {
-        print_percent(
+        print_red_threshold(
             "batt", "%",
             read_battery_percent(),
             0, 25
