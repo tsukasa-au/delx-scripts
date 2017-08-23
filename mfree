@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+
+import sys
+
+def read_meminfo():
+    f = open("/proc/meminfo")
+    result = {}
+    for line in f:
+        key, value, *_ = line.split()
+        key = key.strip(":")
+        result[key] = int(value) * 1024
+    return result
+
+def read_zfs_arcstats():
+    try:
+        f = open("/proc/spl/kstat/zfs/arcstats")
+    except FileNotFoundError:
+        return {}
+
+    # skip first two lines
+    f.readline()
+    f.readline()
+
+    result = {}
+    for line in f:
+        key, _, value = line.split()
+        result[key] = int(value)
+    return result
+
+def print_template(first, *rest):
+    sys.stdout.write(first.ljust(7))
+    for x in rest:
+        sys.stdout.write(x.rjust(12))
+    sys.stdout.write("\n")
+
+def main():
+    meminfo = read_meminfo()
+    arcstats = read_zfs_arcstats()
+
+    mem_total = meminfo["MemTotal"]
+    mem_free = meminfo["MemFree"]
+    mem_cached = meminfo["Cached"] + meminfo["SReclaimable"]
+    mem_buffers = meminfo["Buffers"]
+    mem_shared = meminfo["Shmem"]
+    mem_available = meminfo["MemAvailable"]
+
+    swap_total = meminfo["SwapTotal"]
+    swap_free = meminfo["SwapFree"]
+
+    arc_total = arcstats.get("c_max", 0)
+    arc_used = arcstats.get("size", 0)
+
+    calc_used = mem_total - mem_free - mem_cached - mem_buffers
+    calc_cache = mem_buffers + mem_cached + arc_used
+    calc_available = mem_available + arc_used
+
+    def fmt(x):
+        return str(round(x/1024/1024))
+
+    print_template("", "total", "used", "free", "shared", "buff/cache", "available")
+
+    print_template(
+        "Mem:",
+        fmt(mem_total),
+        fmt(calc_used),
+        fmt(mem_free),
+        fmt(mem_shared),
+        fmt(calc_cache),
+        fmt(calc_available),
+    )
+    print_template(
+        "Swap:",
+        fmt(swap_total),
+        fmt(swap_total - swap_free),
+        fmt(swap_free),
+    )
+    if arcstats:
+        print_template(
+            "ZFS:",
+            fmt(arc_total),
+            fmt(arc_used),
+        )
+
+if __name__ == "__main__":
+    main()
+
