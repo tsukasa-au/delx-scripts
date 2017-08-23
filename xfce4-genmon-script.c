@@ -29,10 +29,13 @@ char* read_file(char* filename) {
     size_t pos = 0;
     int fd = open(filename, 0);
 
+    if (fd < 0) {
+        return NULL;
+    }
+
     for (;;) {
         ssize_t result = read(fd, buf+pos, sizeof(buf)-pos);
         if (result < 0) {
-            fprintf(stderr, "Failed reading file: %s -- %s\n", strerror(errno), filename);
             return NULL;
         }
         if (result == 0) {
@@ -76,6 +79,7 @@ char* read_next_line(char** s) {
 int read_cpu_idle_jiffys() {
     char* procstat = read_file("/proc/stat");
     if (procstat == NULL) {
+        fprintf(stderr, "Failed reading file /proc/stat: %s\n", strerror(errno));
         return -1;
     }
 
@@ -94,6 +98,7 @@ int read_cpu_idle_jiffys() {
 int count_cpus() {
     char* procstat = read_file("/proc/stat");
     if (procstat == NULL) {
+        fprintf(stderr, "Failed reading file /proc/stat: %s\n", strerror(errno));
         return -1;
     }
 
@@ -131,12 +136,11 @@ int read_cpu_percent() {
 int read_mem_free_mibis() {
     char* meminfo = read_file("/proc/meminfo");
     if (meminfo == NULL) {
+        fprintf(stderr, "Failed reading file /proc/meminfo: %s\n", strerror(errno));
         return -1;
     }
 
-    int mem_free = -1;
-
-    while (*meminfo && mem_free < 0) {
+    while (*meminfo) {
         char* line = read_next_line(&meminfo);
         if (line == NULL) {
             break;
@@ -151,26 +155,62 @@ int read_mem_free_mibis() {
         }
 
         if (strcmp(key, "MemAvailable") == 0) {
-            mem_free = parse_int(value_str);
+            int mem_available = parse_int(value_str);
+            return (int)round((double)mem_available / 1024);
         }
     }
 
-    if (mem_free < 0) {
-        fprintf(stderr, "Failed to find MemAvailable in /proc/meminfo\n");
+    fprintf(stderr, "Failed to find MemAvailable in /proc/meminfo\n");
+    return -1;
+}
+
+int read_zfs_arc_used_mibis() {
+    char* arcstats = read_file("/proc/spl/kstat/zfs/arcstats");
+    if (arcstats == NULL) {
         return -1;
     }
 
-    return (int)round((double)mem_free / 1024);
+    while (*arcstats) {
+        char* line = read_next_line(&arcstats);
+        if (line == NULL) {
+            break;
+        }
+
+        char* key = strtok(line, " ");
+        strtok(NULL, " ");
+        char* value_str = strtok(NULL, " ");
+
+        if (key == NULL || value_str == NULL) {
+            fprintf(stderr, "Failed to parse key/value token in /proc/spl/kstat/zfs/arcstats\n");
+            return -1;
+        }
+
+        if (strcmp(key, "size") == 0) {
+            int arc_used = parse_int(value_str);
+            return (int)round((double)arc_used / 1024 / 1024);
+        }
+    }
+
+    fprintf(stderr, "Failed to find 'c' in /proc/spl/kstat/zfs/arcstats\n");
+    return -1;
 }
 
 int read_battery_percent() {
     char* percent_str = NULL;
+
     if (percent_str == NULL) {
         percent_str = read_file("/sys/class/power_supply/BAT0/capacity");
     }
+
     if (percent_str == NULL) {
         percent_str = read_file("/sys/class/power_supply/BAT1/capacity");
     }
+
+    if (percent_str == NULL) {
+        fprintf(stderr, "Failed reading file battery capacity file: %s\n", strerror(errno));
+        return -1;
+    }
+
     return parse_int(percent_str);
 }
 
@@ -213,7 +253,7 @@ int main(int argc, char** argv) {
     if (strchr(show_flags, 'm')) {
         print_red_threshold(
             "mem", " MiB",
-            read_mem_free_mibis(),
+            read_mem_free_mibis() + read_zfs_arc_used_mibis(),
             0, 512
         );
     }
