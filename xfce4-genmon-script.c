@@ -49,13 +49,13 @@ char* read_file(char* filename) {
     }
 }
 
-int parse_int(char* s) {
+long parse_int(char* s) {
     if (s == NULL) {
         return -1;
     }
 
     errno = 0;
-    int value = strtol(s, NULL, 10);
+    long value = strtol(s, NULL, 10);
     if (errno != 0) {
         fprintf(stderr, "Failed to parse string: %s -- %s\n", strerror(errno), s);
         return -1;
@@ -186,7 +186,7 @@ int read_zfs_arc_used_mibis() {
         }
 
         if (strcmp(key, "size") == 0) {
-            int arc_used = parse_int(value_str);
+            long arc_used = parse_int(value_str);
             return (int)round((double)arc_used / 1024 / 1024);
         }
     }
