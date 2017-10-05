@@ -4,8 +4,11 @@ architecture="x86_64"
 linux_packages="linux linux-lts"
 
 declare -A module2package
+module2package[nvidia]="$(pacman -Qqs nvidia dkms)"
 module2package[vboxhost]=virtualbox-host-dkms
 module2package[broadcom-wl]=broadcom-wl-dkms
+module2package[spl]=spl-dkms
+module2package[zfs]=zfs-dkms
 
 echo "# Running: $(uname -r)"
 for linux in $linux_packages; do
