@@ -17,13 +17,25 @@ if [ ! -f "$crypto_keyfile" ]; then
     exit 1
 fi
 
-disk_uuid="$(ls /etc/systemd/system/basic.target.wants/disable-crypto_keyfile@*.service | cut -d'@' -f2 | cut -d. -f1)"
-device_filename="/dev/disk/by-uuid/${disk_uuid}"
-if [ -z "$device_filename" ]; then
+found_devices=""
+for disk_uuid in $(ls /etc/systemd/system/basic.target.wants/disable-crypto_keyfile@*.service | cut -d'@' -f2 | cut -d. -f1); do
+    found=1
+    found_devices="${found_devices} /dev/disk/by-uuid/${disk_uuid}"
+done
+
+if [ -z "$found_devices" ]; then
     echo "Failed to find your encrypted device. You must have disable-crypto_keyfile@.service enabled."
     exit 1
 fi
 
-set -ex
-sudo cryptsetup luksAddKey "$device_filename" "$crypto_keyfile" --key-slot 7
+echo -n "Enter password for devices: "
+read -r -s pw
+echo ""
+for device_filename in $found_devices; do
+    echo "Adding key to $device_filename"
+    sudo cryptsetup luksAddKey "$device_filename" "$crypto_keyfile" --key-slot 7 <<EOF
+${pw}
+EOF
+done
+
 $reboot_cmd
