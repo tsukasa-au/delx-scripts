@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+'use strict'
 
 const {exec} = require('child_process');
 
@@ -27,8 +28,8 @@ async function findInterface() {
     return lines[0];
 }
 
-async function scanInterface(interface) {
-    const {stdout} = await execAsync(`sudo iw dev ${interface} scan`);
+async function scanInterface(iface) {
+    const {stdout} = await execAsync(`sudo iw dev ${iface} scan`);
 
     const results = [];
     let partial = null;
@@ -70,7 +71,7 @@ async function scanInterface(interface) {
 
     return results
         .sort()
-        .map(([_, {bssid, ssid, signal, channel}]) => {
+        .map(([, {bssid, ssid, signal, channel}]) => {
             ssid = ssid.padStart(40, ' ');
             channel = channel.padEnd(10, ' ');
             return `${signal}  ${channel}  ${ssid}  ${bssid}`;
@@ -79,11 +80,11 @@ async function scanInterface(interface) {
 }
 
 async function main() {
-    const interface = await findInterface();
+    const iface = await findInterface();
 
     for (;;) {
-        const scanResult = await scanInterface(interface).catch((err) => err.toString());
-        process.stdout.write('\033[2J\033[0f');
+        const scanResult = await scanInterface(iface).catch((err) => err.toString());
+        process.stdout.write('\x1b[2J\x1b[0f');
         process.stdout.write(scanResult);
         await sleep(3000);
     }
