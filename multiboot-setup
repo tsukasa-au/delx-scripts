@@ -42,13 +42,15 @@ function install_grub_bios {
 }
 
 function install_grub_efi {
-    sudo grub-install \
-        --target=x86_64-efi \
-        --no-nvram \
-        --removable \
-        --efi-directory="$MULTIBOOT_MNT" \
-        --boot-directory="$MULTIBOOT_MNT" \
-        "$DISK_DEVICE"
+    for arch in i386-efi x86_64-efi; do
+        sudo grub-install \
+            --target="$arch" \
+            --no-nvram \
+            --removable \
+            --efi-directory="$MULTIBOOT_MNT" \
+            --boot-directory="$MULTIBOOT_MNT" \
+            "$DISK_DEVICE"
+    done
 }
 
 function cmd_mount {
