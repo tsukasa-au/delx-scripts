@@ -2,16 +2,13 @@
 
 function get_pids_to_restart {
     sudo lsof +c 0 / | \
-        grep 'DEL\|(deleted)' | \
-        awk '{print $2}' | \
+        awk '/DEL|(deleted)/ { print $2 }' | \
         sort -u
 }
 
 function find_service_for_pid {
     systemctl status "$1" | \
-        head -n1 | \
-        awk '{print $2}' | \
-        grep '\.service$'
+        awk '$2 ~ /\.service$/ && NR == 1 { print $2 }'
 }
 
 function is_cron_child {
