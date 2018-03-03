@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -eu
+
+cd ~/backup-mysql/
+
+DATABASES="$(echo 'show databases' | mysql | tail -n+2)"
+for db in ${DATABASES}; do
+    mysqldump --add-drop-table --single-transaction "${db}" | \
+        gzip -9 > "${db}-$(date '+%Y%m%d').sql.gz"
+
+    rm -f $(ls -1 "${db}-"* | sort -r | tail -n +10)
+done
