@@ -4,7 +4,7 @@ set -eu
 
 cd ~/backup-mysql/
 
-DATABASES="$(echo 'show databases' | mysql | tail -n+2)"
+DATABASES="$(echo 'show databases' | mysql | grep -vE '^(Database|mysql|information_schema|performance_schema)$')"
 for db in ${DATABASES}; do
     mysqldump --add-drop-table --single-transaction "${db}" | \
         gzip -9 > "${db}-$(date '+%Y%m%d').sql.gz"
