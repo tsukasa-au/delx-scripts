@@ -1,0 +1,4 @@
+#!/bin/sh
+set -e
+export ZPOOL_VDEV_NAME_PATH=1
+exec grub-mkconfig -o /boot/grub/grub.cfg "$@"
