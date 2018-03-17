@@ -70,14 +70,13 @@ function cmd_umount {
 }
 
 function cmd_add_iso {
-    if [ ! -f "${1:-}" ]; then
-        echo "Usage: $0 add_iso /path/to/ubuntu.iso"
+    if [ ! -f "${MULTIBOOT_MNT}/$(basename "${1:-}")" ]; then
+        echo "Usage: $0 add_iso ${MULTIBOOT_MNT}/ubuntu.iso"
         exit 1
     fi
     set -x
 
-    ISO_FILENAME="$1"
-    ISO_BASENAME="$(basename "$ISO_FILENAME")"
+    ISO_BASENAME="$(basename "$1")"
     GRUB_PART_CFG="${MULTIBOOT_MNT}/grub/parts/${ISO_BASENAME}"
 
     mkdir -p "$(dirname "$GRUB_PART_CFG")"
@@ -101,8 +100,6 @@ function cmd_add_iso {
 }
 
 function setup_ubuntu {
-    copy_iso_data
-
     cat <<EOT > "$GRUB_PART_CFG"
 menuentry '$ISO_BASENAME' {
   loopback loop /$ISO_BASENAME
@@ -114,8 +111,6 @@ EOT
 }
 
 function setup_debian {
-    copy_iso_data
-
     cat <<EOT > "$GRUB_PART_CFG"
 menuentry '$ISO_BASENAME' {
   loopback loop /$ISO_BASENAME
@@ -127,12 +122,10 @@ EOT
 }
 
 function setup_fedora {
-    copy_iso_data
-
     cat <<EOT > "$GRUB_PART_CFG"
 menuentry '$ISO_BASENAME' {
   loopback loop /$ISO_BASENAME
-  linux (loop)/isolinux/vmlinuz root=live:CDLABEL=$(blkid -s LABEL -o value "$ISO_FILENAME") rd.live.image quiet iso-scan/filename=/$ISO_BASENAME
+  linux (loop)/isolinux/vmlinuz root=live:CDLABEL=$(blkid -s LABEL -o value "${MULTIBOOT_MNT}/$ISO_BASENAME") rd.live.image quiet iso-scan/filename=/$ISO_BASENAME
   initrd (loop)/isolinux/initrd.img
 }
 
@@ -140,8 +133,6 @@ EOT
 }
 
 function setup_archlinux {
-    copy_iso_data
-
     cat <<EOT > "$GRUB_PART_CFG"
 menuentry '$ISO_BASENAME' {
   loopback loop /$ISO_BASENAME
@@ -154,7 +145,6 @@ EOT
 
 function setup_freedos {
     install_memdisk
-    copy_iso_data
 
     cat <<EOT > "$GRUB_PART_CFG"
 menuentry '$ISO_BASENAME' {
@@ -168,10 +158,6 @@ menuentry '$ISO_BASENAME' {
 }
 
 EOT
-}
-
-function copy_iso_data {
-    rsync --size-only --progress "$ISO_FILENAME" "${MULTIBOOT_MNT}/"
 }
 
 function install_memdisk {
