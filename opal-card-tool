@@ -19,6 +19,7 @@ VERSION = 3
 CACHE_DIR = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache/opal-card-tool"))
 PICKLE_FILE = os.path.join(CACHE_DIR, "pickle")
 
+USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0"
 OPAL_BASE = "https://www.opal.com.au"
 LOGIN_URL = OPAL_BASE + "/login/registeredUserUsernameAndPasswordLogin"
 CARD_DETAILS_URL = OPAL_BASE + "/registered/getJsonCardDetailsArray"
@@ -66,9 +67,13 @@ class Opal(object):
         self.version = VERSION
         self.username = username
         self.password = password
-
-        self.session = requests.Session()
         self.cards = []
+
+        self.init()
+
+    def init(self):
+        self.session = requests.Session()
+        self.session.headers["User-Agent"] = USER_AGENT
 
     def login(self):
         r = self.session.post(LOGIN_URL, {
@@ -385,6 +390,7 @@ def load_opal():
 
     if opal:
         upgrade_opal(opal)
+        opal.init()
     else:
         username = input("Username: ")
         password = getpass.getpass()
