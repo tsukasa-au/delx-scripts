@@ -1,0 +1,13 @@
+#!/bin/bash
+
+echo
+for bg in 00 $(seq 40 47); do
+    for bold in 0 1; do
+        echo -en " \\\\033[${bg}m  "
+        for fg in $(seq 30 37); do
+	    echo -en "\\033[${bg}m\\033[${bold};${fg}m \\\\033[${bold};${fg}m  "
+        done
+        echo -e "\\033[0m"
+    done
+    echo
+done
