@@ -13,6 +13,6 @@ done < <(pacman -Qm)
 curl -gsSf "$query_url" | jq -r '.results[] | .Name, .Version, "\u0000"' | while read -d $'\0' pkg aur_version; do
     installed_version="${pkg_versions[$pkg]}"
     if [ "$installed_version" != "$aur_version" ]; then
-        echo "New ${pkg}: $installed_version -> $aur_version"
+        echo "${pkg} $installed_version -> $aur_version"
     fi
 done
