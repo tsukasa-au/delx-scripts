@@ -8,6 +8,6 @@ mkdir -p "$FAKEDB"
 
 ln -s "/var/lib/pacman/local" "${FAKEDB}/"
 fakeroot -- pacman -Sy --dbpath "$FAKEDB" --logfile /dev/null > /dev/null
-pacman -Qu --dbpath "$FAKEDB"
+pacman -Qu --dbpath "$FAKEDB" || true
 
 rm -rf "$FAKEDB"
