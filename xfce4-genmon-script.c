@@ -133,12 +133,15 @@ int read_cpu_percent() {
     return 100 - (int)round(idle_jiffys_per_cpu_second);
 }
 
-int read_mem_free_mibis() {
+int read_meminfo(int* mem_free_mibis, int* mem_total_mibis) {
     char* meminfo = read_file("/proc/meminfo");
     if (meminfo == NULL) {
         fprintf(stderr, "Failed reading file /proc/meminfo: %s\n", strerror(errno));
         return -1;
     }
+
+    *mem_free_mibis = -1;
+    *mem_total_mibis = -1;
 
     while (*meminfo) {
         char* line = read_next_line(&meminfo);
@@ -156,12 +159,21 @@ int read_mem_free_mibis() {
 
         if (strcmp(key, "MemAvailable") == 0) {
             int mem_available = parse_int(value_str);
-            return (int)round((double)mem_available / 1024);
+            *mem_free_mibis = (int)round((double)mem_available / 1024);
+        }
+
+        if (strcmp(key, "MemTotal") == 0) {
+            int mem_available = parse_int(value_str);
+            *mem_total_mibis = (int)round((double)mem_available / 1024);
         }
     }
 
-    fprintf(stderr, "Failed to find MemAvailable in /proc/meminfo\n");
-    return -1;
+    if (*mem_free_mibis < 0 || *mem_total_mibis) {
+        fprintf(stderr, "Failed to find field in /proc/meminfo\n");
+        return -1;
+    } else {
+        return 0;
+    }
 }
 
 int read_zfs_arc_used_mibis() {
@@ -251,10 +263,12 @@ int main(int argc, char** argv) {
     }
 
     if (strchr(show_flags, 'm')) {
+        int mem_free_mibis, mem_total_mibis;
+        read_meminfo(&mem_free_mibis, &mem_total_mibis);
         print_red_threshold(
             "mem", " MiB",
-            read_mem_free_mibis() + read_zfs_arc_used_mibis(),
-            0, 512
+            mem_free_mibis + read_zfs_arc_used_mibis(),
+            0, mem_total_mibis / 10
         );
     }
 
