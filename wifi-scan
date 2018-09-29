@@ -51,6 +51,9 @@ async function scanInterface(iface) {
         if (line.startsWith('DS Parameter set: channel')) {
             partial.channel = line.split(':')[1].trim();
         }
+        if (line.startsWith('freq: ')) {
+            partial.freq = 'freq ' + line.split(':')[1].trim();
+        }
     }
 
     function finishPartial() {
@@ -59,7 +62,7 @@ async function scanInterface(iface) {
         }
 
         partial.ssid = partial.ssid || '';
-        partial.channel = partial.channel || '';
+        partial.channel = partial.channel || partial.freq || '';
 
         const sortKey = [
             parseFloat(partial.signal),
