@@ -4,8 +4,6 @@ set -eu
 
 PARTITION_LABEL="multiboot"
 MULTIBOOT_MNT="/mnt/multiboot"
-SYSLINUX_VERSION="6.03"
-SYSLINUX_URL="https://www.kernel.org/pub/linux/utils/boot/syslinux/syslinux-${SYSLINUX_VERSION}.tar.gz"
 
 function cmd_format {
     if [ ! -b "${1:-}" ]; then
@@ -21,7 +19,7 @@ function cmd_format {
     sudo mkfs.vfat -n "$PARTITION_LABEL" "$PARTITION_DEVICE"
 }
 
-function cmd_bootloader {
+function cmd_grub {
     DISK_DEVICE="$(mount|grep /mnt/multiboot|cut -d' ' -f1|sed 's/[0-9]*$//')"
     if [ ! -b "$DISK_DEVICE" ]; then
         echo "ERROR! Could not find disk to install bootloader. Try using mount."
@@ -32,6 +30,12 @@ function cmd_bootloader {
     sudo -k
     install_grub_bios
     install_grub_efi
+    install_grub_cfg
+}
+
+function cmd_grubcfg {
+    set -x
+    install_grub_cfg
 }
 
 function install_grub_bios {
@@ -53,6 +57,10 @@ function install_grub_efi {
     done
 }
 
+function install_grub_cfg {
+    print_grub_cfg | sudo tee "${MULTIBOOT_MNT}/grub/grub.cfg" > /dev/null
+}
+
 function cmd_mount {
     set -x
 
@@ -69,123 +77,18 @@ function cmd_umount {
     sudo rmdir "$MULTIBOOT_MNT"
 }
 
-function cmd_add_iso {
-    if [ ! -f "${MULTIBOOT_MNT}/$(basename "${1:-}")" ]; then
-        echo "Usage: $0 add_iso ${MULTIBOOT_MNT}/ubuntu.iso"
-        exit 1
-    fi
+function cmd_freedos {
     set -x
 
-    ISO_BASENAME="$(basename "$1")"
-    GRUB_PART_CFG="${MULTIBOOT_MNT}/grub/parts/${ISO_BASENAME}"
+    local SYSLINUX_VERSION="6.03"
+    local SYSLINUX_URL="https://www.kernel.org/pub/linux/utils/boot/syslinux/syslinux-${SYSLINUX_VERSION}.tar.gz"
+    local FREEDOS_URL="http://www.freedos.org/download/download/FD12LITE.zip"
 
-    mkdir -p "$(dirname "$GRUB_PART_CFG")"
+    curl -fL "$SYSLINUX_URL" | \
+        tar xz --no-same-owner --strip-components=3 -C "$MULTIBOOT_MNT" \
+        "syslinux-${SYSLINUX_VERSION}/bios/memdisk/memdisk"
 
-    if [[ "$ISO_BASENAME" == ubuntu-*-desktop-*.iso ]]; then
-        setup_ubuntu
-    elif [[ "$ISO_BASENAME" == debian-live-*.iso ]]; then
-        setup_debian
-    elif [[ "$ISO_BASENAME" == Fedora-Workstation-Live-*.iso ]]; then
-        setup_fedora
-    elif [[ "$ISO_BASENAME" == archlinux-*.iso ]]; then
-        setup_archlinux
-    elif [[ "$ISO_BASENAME" == FD12*.zip ]]; then
-        setup_freedos
-    else
-        echo "Unsupported ISO! $ISO_BASENAME"
-    fi
-
-    delete_stray_grub_parts
-    print_grub_cfg > "${MULTIBOOT_MNT}/grub/grub.cfg"
-}
-
-function setup_ubuntu {
-    cat <<EOT > "$GRUB_PART_CFG"
-menuentry '$ISO_BASENAME' {
-  loopback loop /$ISO_BASENAME
-  linux (loop)/casper/vmlinuz.efi boot=casper quiet iso-scan/filename=/$ISO_BASENAME
-  initrd (loop)/casper/initrd.lz
-}
-
-EOT
-}
-
-function setup_debian {
-    cat <<EOT > "$GRUB_PART_CFG"
-menuentry '$ISO_BASENAME' {
-  loopback loop /$ISO_BASENAME
-  linux (loop)/live/vmlinuz boot=live components findiso=/$ISO_BASENAME
-  initrd (loop)/live/initrd.img
-}
-
-EOT
-}
-
-function setup_fedora {
-    cat <<EOT > "$GRUB_PART_CFG"
-menuentry '$ISO_BASENAME' {
-  loopback loop /$ISO_BASENAME
-  linux (loop)/isolinux/vmlinuz root=live:CDLABEL=$(blkid -s LABEL -o value "${MULTIBOOT_MNT}/$ISO_BASENAME") rd.live.image quiet iso-scan/filename=/$ISO_BASENAME
-  initrd (loop)/isolinux/initrd.img
-}
-
-EOT
-}
-
-function setup_archlinux {
-    cat <<EOT > "$GRUB_PART_CFG"
-menuentry '$ISO_BASENAME' {
-  loopback loop /$ISO_BASENAME
-  linux (loop)/arch/boot/x86_64/vmlinuz img_label=${PARTITION_LABEL} img_loop=$ISO_BASENAME archisobasedir=arch earlymodules=loop
-  initrd (loop)/arch/boot/x86_64/archiso.img
-}
-
-EOT
-}
-
-function setup_freedos {
-    install_memdisk
-
-    cat <<EOT > "$GRUB_PART_CFG"
-menuentry '$ISO_BASENAME' {
-  if [ \${grub_platform} = pc ]; then
-    linux16 /memdisk raw
-    initrd16 /$ISO_BASENAME
-  else
-    echo "FreeDOS only works with BIOS boot."
-    sleep 3
-  fi
-}
-
-EOT
-}
-
-function install_memdisk {
-    local dest="${MULTIBOOT_MNT}/memdisk"
-
-    if [ -f "$dest" ]; then
-        return
-    fi
-
-    for maybe in /usr/lib/syslinux/bios/memdisk /usr/lib/syslinux/memdisk; do
-        if [ -f "$maybe" ]; then
-            cp "$maybe" "$dest"
-            return
-        fi
-    done
-
-    curl --fail "$SYSLINUX_URL" | \
-        tar xz --strip-components=3 -C "$MULTIBOOT_MNT" \
-            "syslinux-${SYSLINUX_VERSION}/bios/memdisk/memdisk"
-}
-
-function delete_stray_grub_parts {
-    pushd "${MULTIBOOT_MNT}/grub/parts" &> /dev/null
-    comm -13 \
-         <(find "${MULTIBOOT_MNT}/" -maxdepth 1 -type f -printf '%f\n'|sort) \
-         <(find "${MULTIBOOT_MNT}/grub/parts/" -type f -printf '%f\n'|sort) \
-         | xargs -d '\n' -r rm
-    popd &> /dev/null
+    curl -fL "$FREEDOS_URL" > "${MULTIBOOT_MNT}/FD12LITE.zip"
 }
 
 function print_grub_cfg {
@@ -193,11 +96,67 @@ function print_grub_cfg {
 insmod all_video
 insmod part_msdos
 insmod progress
+insmod regexp
 search --set=root --label $PARTITION_LABEL
 
-EOT
+function setup_arch {
+  menuentry "\$1" {
+    loopback loop \$1
+    linux (loop)/arch/boot/x86_64/vmlinuz img_label=${PARTITION_LABEL} img_loop=\$1 archisobasedir=arch earlymodules=loop
+    initrd (loop)/arch/boot/x86_64/archiso.img
+  }
+}
+for iso in /archlinux-*.iso; do
+  setup_arch \$iso
+done
 
-    cat "${MULTIBOOT_MNT}/grub/parts/"*
+function setup_debian {
+  menuentry "\$1" {
+    loopback loop \$1
+    linux (loop)/live/vmlinuz* boot=live components findiso=\$1
+    initrd (loop)/live/initrd.img*
+  }
+}
+for iso in /debian-live-*.iso; do
+  setup_debian \$iso
+done
+
+if [ -f /memdisk -a -f /FD12LITE.zip ]; then
+  menuentry /FD12LITE.zip {
+    if [ \${grub_platform} = pc ]; then
+      linux16 /memdisk raw
+      initrd16 /FD12LITE.zip
+    else
+      echo "FreeDOS only works with BIOS boot."
+      sleep 3
+    fi
+  }
+fi
+
+function setup_fedora {
+  menuentry "\$1" {
+    loopback loop \$1
+    probe -s iso_label -l (loop)
+    linux (loop)/isolinux/vmlinuz root=live:CDLABEL=\$iso_label rd.live.image quiet iso-scan/filename=\$1
+    initrd (loop)/isolinux/initrd.img
+  }
+}
+for iso in /Fedora-Workstation-Live-*.iso; do
+  setup_fedora \$iso
+done
+
+function setup_ubuntu {
+  menuentry "\$1" {
+    loopback loop \$1
+    linux (loop)/casper/vmlinuz boot=casper quiet iso-scan/filename=\$1
+    initrd (loop)/casper/initrd*
+  }
+}
+for iso in /ubuntu-*-desktop-*.iso; do
+  setup_ubuntu \$iso
+done
+
+EOT
 }
 
 CMD="cmd_${1:-}"
@@ -206,6 +165,6 @@ shift || true
 if [ "$(type -t -- "$CMD")" = "function" ]; then
     "${CMD}" "$@"
 else
-    echo "Usage: $0 [format|mount|bootloader|add_iso|umount]"
+    echo "Usage: $0 [format|mount|grub|grubcfg|freedos|umount]"
     exit 1
 fi
