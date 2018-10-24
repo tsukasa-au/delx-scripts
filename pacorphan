@@ -130,12 +130,13 @@ def load_keep_pkg_list(name):
             pkg = strip_comment(pkg).strip()
             if not pkg:
                 continue
-            if filename[0] != "~":
+            if filename[0] != "~" and pkg[0] != "~":
                 if pkg in result:
                     print("# Duplicate entry:", pkg, "in file", filename)
                     continue
                 result.append(pkg)
             else:
+                pkg = pkg.strip("~")
                 if pkg not in result:
                     print("# Redundant removal:", pkg, "in file", filename)
                     continue
