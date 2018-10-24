@@ -5,12 +5,12 @@ set -eu
 declare -A pkg_versions
 query_url='https://aur.archlinux.org/rpc/?v=5&type=info'
 
-while read pkg installed_version; do
+while read -r pkg installed_version; do
     pkg_versions[$pkg]="$installed_version"
     query_url="${query_url}&arg[]=${pkg}"
-done < <(pacman -Qm)
+done < <(if [ -t 0 ]; then pacman -Qm; else cat; fi)
 
-curl -gsSf "$query_url" | jq -r '.results[] | .Name, .Version, "\u0000"' | while read -d $'\0' pkg aur_version; do
+curl -gsSf "$query_url" | jq -r '.results[] | .Name, .Version, "\u0000"' | while read -r -d $'\0' pkg aur_version; do
     installed_version="${pkg_versions[$pkg]}"
     if [ "$installed_version" != "$aur_version" ]; then
         echo "${pkg} $installed_version -> $aur_version"

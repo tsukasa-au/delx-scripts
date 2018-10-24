@@ -1,11 +1,17 @@
 #!/bin/bash
 
-set -e
+set -eu
 
 PKGNAME="$1"
 if [ -z "$PKGNAME" ]; then
     echo "Usage: $0 pkgname"
     exit 1
+fi
+
+shift
+MAKEPKG_CMD=("$@")
+if [ ${#MAKEPKG_CMD[@]} -eq 0 ]; then
+    MAKEPKG_CMD=("makepkg" "-sri")
 fi
 
 function enter_directory {
@@ -27,7 +33,7 @@ function show_diff {
 }
 
 function ask_user_to_continue {
-    read -p "Ok? (y/n) " ok
+    read -r -p "Ok? (y/n) " ok
     if [ "$ok" != "y" ]; then
         return 1
     fi
@@ -35,7 +41,7 @@ function ask_user_to_continue {
 
 function build_and_install {
     git checkout .
-    makepkg -sri
+    "${MAKEPKG_CMD[@]}"
 }
 
 enter_directory "/var/abs/${PKGNAME}"
