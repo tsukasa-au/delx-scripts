@@ -168,7 +168,7 @@ int read_meminfo(int* mem_free_mibis, int* mem_total_mibis) {
         }
     }
 
-    if (*mem_free_mibis < 0 || *mem_total_mibis) {
+    if (*mem_free_mibis < 0 || *mem_total_mibis < 0) {
         fprintf(stderr, "Failed to find field in /proc/meminfo\n");
         return -1;
     } else {
@@ -241,18 +241,22 @@ void print_red_threshold(
     }
 
     printf(
-        "%s <span color='%s'>%d</span>%s  ",
+        "%s <span color='%s'>%d</span>%s\n",
         name, color, value, units
     );
 }
 
 int main(int argc, char** argv) {
     char* show_flags = "cmb";
-    if (argc == 2) {
+    char* top_padding = "0";
+    if (argc >= 2) {
         show_flags = argv[1];
     }
+    if (argc >= 3) {
+        top_padding = argv[2];
+    }
 
-    printf("<txt>");
+    printf("<txt><span size=\"%s\">\n</span>", top_padding);
 
     if (strchr(show_flags, 'c')) {
         print_red_threshold(
