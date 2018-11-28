@@ -50,7 +50,7 @@ def main():
     arc_total = arcstats.get("c_max", 0)
     arc_used = arcstats.get("size", 0)
 
-    calc_used = mem_total - mem_free - mem_cached - mem_buffers
+    calc_used = mem_total - mem_free - mem_cached - mem_buffers - arc_used
     calc_cache = mem_buffers + mem_cached + arc_used
     calc_available = mem_available + arc_used
 
