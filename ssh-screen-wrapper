@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/bin/bash
+
+set -eu
 
 hostname="$(basename "$0")"
 local_hostname="${hostname}.localnet"
@@ -19,11 +21,12 @@ while true; do
         -o ServerAliveInterval=1 \
         -o ServerAliveCountMax=5 \
         -t \
+        "$@" \
         "$hostname" \
         "bash --login -c 'screen -dR'" \
     && exit 0
     echo "Disconnected, waiting..."
-    echo -ne "\033]0;${hostname}: disconnected!\007"
+    echo -ne "\\033]0;${hostname}: disconnected!\\007"
     sleep 1
 done
 
