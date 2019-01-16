@@ -1,0 +1,5 @@
+#!/bin/bash
+
+set -xeu
+sudo arch-nspawn /var/abs/chroot/root pacman -Syu
+makechrootpkg -c -l "$(basename "$PWD")" -T -r /var/abs/chroot

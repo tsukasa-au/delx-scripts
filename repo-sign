@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -eu
+
+cd /var/cache/pacman/abs
+
+tosign=()
+for pkg in *.pkg.tar.xz; do
+    if ! [ -f "${pkg}.sig" ]; then
+        tosign+=("$pkg")
+    fi
+done
+
+if [ "${#tosign[@]}" -gt 0 ]; then
+    echo "Signing:"
+    echo "${tosign[@]}" | xargs -n1 echo "  "
+    echo
+    for i in $(seq 5 -1 1); do
+        echo -n "$i "
+        sleep 1
+    done
+    echo
+    set -x
+    # Preload the agent
+    gpg --output /dev/null --detach-sign /dev/null
+    echo "${tosign[@]}" | xargs -n1 gpg --detach-sign
+    echo "${tosign[@]}" | xargs -n1 repo-add delx.db.tar.xz -R
+else
+    echo "Nothing to do"
+fi
