@@ -1,6 +1,0 @@
-#!/bin/bash
-kdialog --yesno "Do you want to photocopy?"
-if test $? = 0; then
-	scanimage | lpr -o scaling=100
-	sh $0 &
-fi
