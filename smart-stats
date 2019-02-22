@@ -3,7 +3,10 @@
 set -eu
 
 for dev in /dev/sd?; do
-    name="$(udevadm info "$dev"|awk -F= '/ID_SERIAL=/ {print $2}')"
+    if ! udevadm info "$dev" | grep -q ID_BUS=ata; then
+        continue
+    fi
+    name="$(udevadm info "$dev" | awk -F= '/ID_SERIAL=/ {print $2}')"
     logfile="/var/log/smart/${name}/$(date +%Y-%m-%d_%H:%M).txt"
     mkdir -p "$(dirname "$logfile")"
     smartctl -a "$dev" > "$logfile"
