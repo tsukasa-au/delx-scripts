@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -eu
-
 for dev in /dev/sd?; do
     if ! udevadm info "$dev" | grep -q ID_BUS=ata; then
         continue
@@ -11,3 +9,5 @@ for dev in /dev/sd?; do
     mkdir -p "$(dirname "$logfile")"
     smartctl -a "$dev" > "$logfile"
 done
+
+exit 0
