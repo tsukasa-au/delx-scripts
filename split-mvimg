@@ -1,0 +1,34 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    echo "Usage: $0 MVIMG_xxx.jpg"
+    exit 1
+fi
+
+set -eu
+
+infile="$1"
+outvid="${infile%.*}.mp4"
+outpic="${infile#MV}"
+
+if ! [ -f "$infile" ]; then
+    echo "Missing input file: $infile"
+    exit 1
+fi
+
+if [ -f "$outvid" ] || [ -f "$outpic" ]; then
+    echo "Output files already exist! $outvid || $outpic"
+    exit 1
+fi
+
+size="$(stat -c '%s' "$infile")"
+revoffset="$(exiftool -m -p "\$MicroVideoOffset" "$infile")"
+if [ -z "$revoffset" ] || [ "$revoffset" -le 0 ]; then
+    echo "Invalid video offset: $revoffset"
+    exit 1
+fi
+offset=$((size - revoffset))
+
+dd if="$infile" of="$outvid" bs="$offset" skip=1
+dd if="$infile" of="$outpic" bs="$offset" count=1
+exiftool -overwrite_original -xmp:all= "$outpic"
