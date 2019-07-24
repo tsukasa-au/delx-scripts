@@ -12,7 +12,7 @@ done < <(if [ -t 0 ]; then pacman -Qm; else cat; fi)
 
 curl -gsSf "$query_url" | jq -r '.results[] | .Name, .Version, "\u0000"' | while read -r -d $'\0' pkg aur_version; do
     installed_version="${pkg_versions[$pkg]}"
-    if [ "$installed_version" != "$aur_version" ]; then
+    if ! echo -e "${installed_version}\n${aur_version}" | pacsort | tail -n1 | grep -qxF "${installed_version}"; then
         echo "${pkg} $installed_version -> $aur_version"
     fi
 done
