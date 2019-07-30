@@ -114,14 +114,13 @@ done
 
 function setup_debian {
   menuentry "\$1" {
-    loopback loop \$1
-    linux (loop)/live/vmlinuz* boot=live components findiso=\$1
-    initrd (loop)/live/initrd.img*
+    linux \$1/vmlinuz
+    initrd \$1/initrd.gz
   }
 }
-for iso in /debian-live-*.iso; do
-  if [ -f "\$iso" ]; then
-    setup_debian \$iso
+for d in /debian-*-hd-media; do
+  if [ -d "\$d" ]; then
+    setup_debian \$d
   fi
 done
 
