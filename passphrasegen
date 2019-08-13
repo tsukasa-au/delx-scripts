@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
 
+import math
 import random
 import os
 
-WORDS_FILENAME = os.environ.get("WORDS", "/usr/share/dict/words")
-NUM_WORDS = 3
-MAX_LEN = 7
-MIN_LEN = 3
+words_filename = os.environ.get("WORDS", "/usr/share/dict/words")
+num_words = 5
+max_word_len = 8
+min_word_len = 3
 
-WORDS = open(WORDS_FILENAME)
-WORDS = [word.strip().title() for word in WORDS]
-WORDS = [word for word in WORDS if word.isalpha() and MIN_LEN <= len(word) <= MAX_LEN]
+words = open(words_filename)
+words = [word.strip().lower() for word in words]
+words = [word for word in words if word.isalpha() and min_word_len <= len(word) <= max_word_len]
+random_words = [random.choice(words) for _ in range(num_words)]
+entropy_words = num_words * math.log(len(words)) / math.log(2)
 
-def generate():
-    random_words = [random.choice(WORDS) for _ in range(NUM_WORDS)]
-    random_number = random.randint(10, 100)
-    return "-".join(random_words + [str(random_number)])
+max_number = 100
+min_number = 10
+random_number = random.randint(min_number, max_number)
+entropy_number = math.log(max_number - min_number) / math.log(2)
 
-for i in range(10):
-    print(generate())
+print("Entropy:", math.floor(entropy_words + entropy_number))
+print("Passphrase:", " ".join(random_words + [str(random_number)]))
