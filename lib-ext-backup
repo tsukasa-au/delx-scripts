@@ -1,0 +1,56 @@
+#!/bin/bash
+
+function find_device {
+    for DEVICE in /dev/disk/by-partlabel/ext*backup*; do
+        if [ -L "$DEVICE" ]; then
+            ZPOOLNAME="$(basename "$DEVICE")"
+            CRYPTNAME="crypt-$(basename "$DEVICE")"
+            echo "> Found: $ZPOOLNAME -> $(readlink -e "$DEVICE")"
+            return
+        fi
+    done
+
+    echo "ERROR! Couldn't find a backup device"
+    exit 1
+}
+
+function pool_import {
+    if ! zpool status "$ZPOOLNAME" &> /dev/null; then
+        echo "> cryptsetup luksOpen $DEVICE $CRYPTNAME"
+        cryptsetup luksOpen "$DEVICE" "$CRYPTNAME" --key-file "/etc/lukskeys/${ZPOOLNAME}"
+        echo "> zpool import $ZPOOLNAME"
+        zpool import "$ZPOOLNAME"
+    fi
+}
+
+function pool_export {
+    echo "> zpool export $ZPOOLNAME"
+    for i in $(seq 10); do
+        zpool export "$ZPOOLNAME" && break
+    done
+    echo "> cryptsetup luksClose $CRYPTNAME"
+    cryptsetup luksClose "$CRYPTNAME"
+}
+
+function cleanup_snapshots {
+    echo "> Cleaning snapshots"
+
+    sanoid --configdir=/etc/sanoid/ext-backup --verbose --prune-snapshots
+
+    zfs list -t snapshot -r "$ZPOOLNAME" -H -o name \
+        | grep -F @syncoid_ \
+        | grep -Fv "@syncoid_$ZPOOLNAME" \
+        | xargs -rn1 zfs destroy -v
+}
+
+function syncoidw {
+    syncoid --identifier "$ZPOOLNAME" "$@"
+}
+
+function main {
+    find_device
+    pool_import
+    sync_snapshots
+    cleanup_snapshots
+    pool_export
+}
