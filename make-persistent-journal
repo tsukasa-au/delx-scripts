@@ -7,4 +7,5 @@ chmod 2755 /var/log/journal
 chgrp systemd-journal /var/log/journal
 setfacl -m g:adm:rx /var/log/journal
 setfacl -d -m g:adm:rx /var/log/journal
+chattr -R +C /var/log/journal
 systemctl restart systemd-journald
