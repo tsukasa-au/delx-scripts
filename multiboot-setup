@@ -153,7 +153,7 @@ done
 function setup_ubuntu {
   menuentry "\$1" {
     loopback loop \$1
-    linux (loop)/casper/vmlinuz boot=casper quiet iso-scan/filename=\$1
+    linux (loop)/casper/vmlinuz* boot=casper quiet iso-scan/filename=\$1
     initrd (loop)/casper/initrd*
   }
 }
