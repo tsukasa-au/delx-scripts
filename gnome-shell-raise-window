@@ -1,0 +1,24 @@
+#!/bin/bash
+
+set -eu
+
+if [ -z "${1:-}" ]; then
+    echo "Usage: $0 title.endsWith('Page Title - Mozilla Firefox')"
+    exit 1
+fi
+
+MATCHER="$1"
+
+dbus-send --session --type=method_call --dest=org.gnome.Shell /org/gnome/Shell org.gnome.Shell.Eval string:"
+const windows = global.display.get_tab_list(0, null);
+const matching = windows.filter((win) => {
+  const title = win.get_title();
+  return $MATCHER;
+});
+
+if (matching.length > 0) {
+  const win = matching[0];
+  win.get_workspace().activate_with_focus(win, true);
+  win.activate(0);
+}
+"
