@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 """
 Proxy Utility
@@ -79,7 +79,7 @@ host2 = beta.example.com
 
 
 import asyncore
-import ConfigParser
+import configparser
 import os
 import socket
 import struct
@@ -135,14 +135,14 @@ class Proxy(asyncore.dispatcher):
     def init(self):
         self.end = False
         self.other = None
-        self.buffer = ""
+        self.buffer = b""
 
     def meet(self, other):
         self.other = other
         other.other = self
 
     def handle_error(self):
-        print >>sys.stderr, "Proxy error:", traceback.format_exc()
+        print("Proxy error:", traceback.format_exc(), file=sys.stderr)
         self.close()
 
     def handle_read(self):
@@ -162,7 +162,7 @@ class Proxy(asyncore.dispatcher):
     def handle_close(self):
         if not self.other:
             return
-        print >>sys.stderr, "Proxy closed"
+        print("Proxy closed", file=sys.stderr)
         self.close()
         if len(self.other.buffer) == 0:
             self.other.close()
@@ -172,10 +172,10 @@ class Proxy(asyncore.dispatcher):
 class ConnectProxy(asyncore.dispatcher):
     def __init__(self, sock):
         asyncore.dispatcher.__init__(self, sock)
-        self.buffer = ""
+        self.buffer = b""
 
     def handle_error(self):
-        print >>sys.stderr, "ConnectProxy error:", traceback.format_exc()
+        print("ConnectProxy error:", traceback.format_exc(), file=sys.stderr)
         self.close()
 
     def handle_read(self):
@@ -198,11 +198,11 @@ class ConnectProxy(asyncore.dispatcher):
         pass
 
     def handle_close(self):
-        print >>sys.stderr, "Proxy closed"
+        print("Proxy closed", file=sys.stderr)
         self.close()
 
     def done(self, host, port):
-        print >>sys.stderr, "Forwarding connection", host, port
+        print("Forwarding connection", host, port, file=sys.stderr)
 
         # Create server proxy
         server = Proxy((host, port))
@@ -222,21 +222,21 @@ class BasicForwarder(asyncore.dispatcher):
         self.allowed = allowed
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.set_reuse_addr()
-        self.bind(("", listen_port))
+        self.bind((b"", listen_port))
         self.listen(50)
-        print >>sys.stderr, "BasicForwarder bound on", listen_port
+        print("BasicForwarder bound on", listen_port, file=sys.stderr)
 
     def handle_error(self):
-        print >>sys.stderr, "BasicForwarder error:", traceback.format_exc()
+        print("BasicForwarder error:", traceback.format_exc(), file=sys.stderr)
 
     def handle_accept(self):
         client_connection, source_addr = self.accept()
         if not self.is_connected_allowed(source_addr):
-            print >>sys.stderr, "Rejected connection from", source_addr
+            print("Rejected connection from", source_addr, file=sys.stderr)
             client_connection.close()
             return
 
-        print >>sys.stderr, "Accepted connection from", source_addr
+        print("Accepted connection from", source_addr, file=sys.stderr)
 
         # Hook the sockets up to the event loop
         client = Proxy(client_connection)
@@ -247,7 +247,7 @@ class BasicForwarder(asyncore.dispatcher):
         if len(self.allowed) == 1 and self.allowed[0].lower() == "all":
             return True
 
-        if source_addr[0] in map(socket.gethostbyname, self.allowed):
+        if source_addr[0] in list(map(socket.gethostbyname, self.allowed)):
             return True
 
         return False
@@ -258,21 +258,21 @@ class Forwarder(asyncore.dispatcher):
         self.allowed = allowed
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.set_reuse_addr()
-        self.bind(("", listen_port))
+        self.bind((b"", listen_port))
         self.listen(50)
-        print >>sys.stderr, "Forwarder bound on", listen_port
+        print("Forwarder bound on", listen_port, file=sys.stderr)
 
     def handle_error(self):
-        print >>sys.stderr, "Forwarder error:", traceback.format_exc()
+        print("Forwarder error:", traceback.format_exc(), file=sys.stderr)
 
     def handle_accept(self):
         client_connection, source_addr = self.accept()
-        if source_addr[0] not in map(socket.gethostbyname, self.allowed):
-            print >>sys.stderr, "Rejected connection from", source_addr
+        if source_addr[0] not in list(map(socket.gethostbyname, self.allowed)):
+            print("Rejected connection from", source_addr, file=sys.stderr)
             client_connection.close()
             return
 
-        print >>sys.stderr, "Accepted connection from", source_addr
+        print("Accepted connection from", source_addr, file=sys.stderr)
         ConnectProxy(client_connection)
 
 class Interceptor(asyncore.dispatcher):
@@ -284,16 +284,16 @@ class Interceptor(asyncore.dispatcher):
         self.set_reuse_addr()
         self.bind(("0.0.0.0", listen_port))
         self.listen(50)
-        print >>sys.stderr, "Interceptor bound on", listen_port
+        print("Interceptor bound on", listen_port, file=sys.stderr)
 
     def handle_error(self):
-        print >>sys.stderr, "Interceptor error!", traceback.format_exc()
+        print("Interceptor error!", traceback.format_exc(), file=sys.stderr)
 
     def handle_accept(self):
         # Get sockets
         client_connection, source_addr = self.accept()
         dest = get_original_dest(client_connection)
-        print >>sys.stderr, "Accepted connection from", source_addr
+        print("Accepted connection from", source_addr, file=sys.stderr)
 
         # Hook them up to the event loop
         client = Proxy(client_connection)
@@ -310,7 +310,7 @@ def main(listen_port, host, port, mode, allowed):
     elif mode == "interceptor":
         proxy = Interceptor(listen_port, host, port)
     else:
-        print >>sys.stderr, "Unknown mode:", mode
+        print("Unknown mode:", mode, file=sys.stderr)
         return 1
     asyncore.loop()
 
@@ -324,21 +324,21 @@ if __name__ == "__main__":
             daemon = False
             config = sys.argv[1]
     except (IndexError, ValueError):
-        print >>sys.stderr, "Usage: %s [-d] config" % sys.argv[0]
+        print("Usage: %s [-d] config" % sys.argv[0], file=sys.stderr)
         sys.exit(1)
 
     try:
-        c = ConfigParser.RawConfigParser()
+        c = configparser.RawConfigParser()
         c.read(config)
     except:
-        print >>sys.stderr, "Error parsing config!"
+        print("Error parsing config!", file=sys.stderr)
         sys.exit(1)
 
     def guard(func, message):
         try:
             return func()
         except:
-            print >>sys.stderr, "Error:", message
+            print("Error:", message, file=sys.stderr)
             raise
             sys.exit(1)
 
@@ -368,7 +368,7 @@ if __name__ == "__main__":
         try:
             main(listen_port, host, port, mode, allowed)
         except KeyboardInterrupt:
-            print
+            print()
     else:
         os.close(0)
         os.close(1)
@@ -382,6 +382,6 @@ if __name__ == "__main__":
             try:
                 sys.exit(main(listen_port, host, port, mode, allowed))
             except KeyboardInterrupt:
-                print
+                print()
             sys.exit(0)
 
