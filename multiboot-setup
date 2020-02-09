@@ -91,6 +91,11 @@ function cmd_freedos {
     curl -fL "$FREEDOS_URL" > "${MULTIBOOT_MNT}/FD12LITE.zip"
 }
 
+function cmd_memtest {
+    curl -fL "https://www.memtest.org/download/5.01/memtest86+-5.01.bin.gz" | \
+        zcat - > "${MULTIBOOT_MNT}/memtest.bin"
+}
+
 function print_grub_cfg {
     cat <<EOT
 insmod all_video
@@ -136,6 +141,12 @@ if [ -f /memdisk -a -f /FD12LITE.zip ]; then
   }
 fi
 
+if [ -f /memtest.bin ]; then
+  menuentry "/memtest" {
+    linux16 /memtest.bin
+  }
+fi
+
 function setup_fedora {
   menuentry "\$1" {
     loopback loop \$1
@@ -172,6 +183,6 @@ shift || true
 if [ "$(type -t -- "$CMD")" = "function" ]; then
     "${CMD}" "$@"
 else
-    echo "Usage: $0 [format|mount|grub|grubcfg|freedos|umount]"
+    echo "Usage: $0 [format|mount|grub|grubcfg|freedos|memtest|umount]"
     exit 1
 fi
