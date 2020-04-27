@@ -1,35 +1,50 @@
 #!/bin/bash
 
-function find_device {
+function cryptsetup_open {
     for DEVICE in /dev/disk/by-partlabel/ext*backup*; do
-        if [ -L "$DEVICE" ]; then
-            ZPOOLNAME="$(basename "$DEVICE")"
-            CRYPTNAME="crypt-$(basename "$DEVICE")"
-            echo "> Found: $ZPOOLNAME -> $(readlink -e "$DEVICE")"
-            return
+        if ! [ -L "$DEVICE" ]; then
+            continue
         fi
+        DISKNAME="$(basename "$DEVICE")"
+        CRYPTNAME="crypt-$DISKNAME"
+        echo "> cryptsetup luksOpen $DEVICE $CRYPTNAME"
+        cryptsetup luksOpen "$DEVICE" "$CRYPTNAME" --key-file "/etc/lukskeys/${DISKNAME}"
+        mkdir -p /run/ext-backup-crypt/
+        ln -s "/dev/mapper/$CRYPTNAME" /run/ext-backup-crypt/
     done
+}
 
-    echo "ERROR! Couldn't find a backup device"
-    exit 1
+function cryptsetup_close {
+    for CRYPTDEVICE in /dev/mapper/crypt-ext*backup*; do
+        if ! [ -L "$CRYPTDEVICE" ]; then
+            continue
+        fi
+        CRYPTNAME="$(basename "$CRYPTDEVICE")"
+        echo "> cryptsetup luksClose $CRYPTNAME"
+        cryptsetup luksClose "$CRYPTNAME"
+        rm -f "/run/ext-backup-crypt/$CRYPTNAME"
+    done
 }
 
 function pool_import {
-    if ! zpool status "$ZPOOLNAME" &> /dev/null; then
-        echo "> cryptsetup luksOpen $DEVICE $CRYPTNAME"
-        cryptsetup luksOpen "$DEVICE" "$CRYPTNAME" --key-file "/etc/lukskeys/${ZPOOLNAME}"
-        echo "> zpool import $ZPOOLNAME"
-        zpool import "$ZPOOLNAME"
+    echo "> zpool import -d /run/ext-backup-crypt -a"
+    zpool import -d /run/ext-backup-crypt -a
+
+    ZPOOLNAME="$(zpool list -H -o name|grep 'ext.*backup'|head -n1)"
+    if [ -z "$ZPOOLNAME" ]; then
+        echo "Error! Could not find pool!"
+        return 1
     fi
+
+    echo "> Found: $ZPOOLNAME"
 }
 
 function pool_export {
     echo "> zpool export $ZPOOLNAME"
-    for i in $(seq 10); do
+    for _ in $(seq 60); do
         zpool export "$ZPOOLNAME" && break
+        sleep 1
     done
-    echo "> cryptsetup luksClose $CRYPTNAME"
-    cryptsetup luksClose "$CRYPTNAME"
 }
 
 function cleanup_snapshots {
@@ -48,9 +63,11 @@ function syncoidw {
 }
 
 function main {
-    find_device
+    zfs get all -s local -H > /root/zfs-props.txt
+    cryptsetup_open
     pool_import
     sync_snapshots
     cleanup_snapshots
     pool_export
+    cryptsetup_close
 }
