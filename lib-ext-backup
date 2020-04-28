@@ -47,6 +47,15 @@ function pool_export {
     done
 }
 
+function pool_setup {
+    zfs set compression=lz4 "$ZPOOLNAME"
+    zfs set devices=off "$ZPOOLNAME"
+    zfs set exec=off "$ZPOOLNAME"
+    zfs set setuid=off "$ZPOOLNAME"
+    zfs set xattr=sa "$ZPOOLNAME"
+    zfs set acltype=posixacl "$ZPOOLNAME"
+}
+
 function cleanup_snapshots {
     echo "> Cleaning snapshots"
 
@@ -66,6 +75,7 @@ function main {
     zfs get all -s local -H > /root/zfs-props.txt
     cryptsetup_open
     pool_import
+    pool_setup
     sync_snapshots
     cleanup_snapshots
     pool_export
