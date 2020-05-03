@@ -10,7 +10,7 @@ function cryptsetup_open {
         echo "> cryptsetup luksOpen $DEVICE $CRYPTNAME"
         cryptsetup luksOpen "$DEVICE" "$CRYPTNAME" --key-file "/etc/lukskeys/${DISKNAME}"
         mkdir -p /run/ext-backup-crypt/
-        ln -s "/dev/mapper/$CRYPTNAME" /run/ext-backup-crypt/
+        ln -sf "/dev/mapper/$CRYPTNAME" /run/ext-backup-crypt/
     done
 }
 
@@ -58,19 +58,19 @@ function pool_setup {
     zfs set acltype=posixacl "$ZPOOLNAME"
 }
 
-function cleanup_snapshots {
-    echo "> Cleaning snapshots"
+function syncoidw {
+    echo "> syncoid $1"
+    syncoid "$@" --identifier "$ZPOOLNAME"
 
-    sanoid --configdir=/etc/sanoid/ext-backup --verbose --prune-snapshots
-
-    zfs list -t snapshot -r "$ZPOOLNAME" -H -o name \
+    zfs list -t snapshot -H -o name -r "$ZPOOLNAME" \
         | grep -F @syncoid_ \
         | grep -Fv "@syncoid_$ZPOOLNAME" \
         | xargs -rn1 zfs destroy -v
 }
 
-function syncoidw {
-    syncoid --identifier "$ZPOOLNAME" "$@"
+function snapshot_cleanup {
+    echo "> Cleaning snapshots"
+    sanoid --configdir=/etc/sanoid/ext-backup --verbose --prune-snapshots
 }
 
 function main {
@@ -78,8 +78,8 @@ function main {
     cryptsetup_open
     pool_import
     pool_setup
-    sync_snapshots
-    cleanup_snapshots
+    snapshot_sync
+    snapshot_cleanup
     pool_export
     cryptsetup_close
 }
