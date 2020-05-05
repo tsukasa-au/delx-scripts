@@ -61,16 +61,16 @@ function pool_setup {
 function syncoidw {
     echo "> syncoid $1"
     syncoid "$@" --identifier "$ZPOOLNAME"
-
-    zfs list -t snapshot -H -o name -r "$ZPOOLNAME" \
-        | grep -F @syncoid_ \
-        | grep -Fv "@syncoid_$ZPOOLNAME" \
-        | xargs -rn1 zfs destroy -v
 }
 
 function snapshot_cleanup {
     echo "> Cleaning snapshots"
     sanoid --configdir=/etc/sanoid/ext-backup --verbose --prune-snapshots
+
+    zfs list -t snapshot -H -o name -r "$ZPOOLNAME" \
+        | grep -F @syncoid_ \
+        | grep -Fv "@syncoid_$ZPOOLNAME" \
+        | xargs -rn1 zfs destroy -v
 }
 
 function main {
