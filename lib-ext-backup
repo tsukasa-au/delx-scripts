@@ -58,6 +58,28 @@ function pool_setup {
     zfs set acltype=posixacl "$ZPOOLNAME"
 }
 
+function pool_maybe_scrub {
+    local now
+    local last_scrub
+    local last_scrub_days_ago
+    now="$(date +%s)"
+    last_scrub="$(zpool status "$ZPOOLNAME"|sed -nE 's/scan: scrub repaired.* on (.*)/\1/p')"
+    last_scrub_days_ago=$(((now - $(date --date="${last_scrub:-1970-01-01}" +%s)) / 86400))
+
+    if [ $last_scrub_days_ago -lt 7 ]; then
+        return
+    fi
+
+    echo "> zpool scrub $ZPOOLNAME"
+    zpool scrub "$ZPOOLNAME"
+
+    while zpool status "$ZPOOLNAME" | grep -q "scrub in progress"; do
+        echo -n .
+        sleep 60
+    done
+    echo " done"
+}
+
 function syncoidw {
     echo "> syncoid $1"
     syncoid "$@" --identifier "$ZPOOLNAME"
@@ -80,6 +102,7 @@ function main {
     pool_setup
     snapshot_sync
     snapshot_cleanup
+    pool_maybe_scrub
     pool_export
     cryptsetup_close
 }
