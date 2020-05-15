@@ -27,12 +27,17 @@ def check_path(path):
     if warn:
         print("WARNING! %s has only %s remaining" % (path, pp_size(free)))
 
+def read_fstab():
+    for line in open("/etc/fstab"):
+        if line.startswith("#"):
+            continue
+        _, path, _ = line.split(maxsplit=2)
+        if path.startswith("/"):
+            yield path
 
 def main():
-    paths = sys.argv[1:]
-    if not paths:
-        print("Usage: %s path" % sys.argv[0])
-        sys.exit(1)
+    paths = set(["/"])
+    paths.update(read_fstab())
     for path in paths:
         check_path(path)
 

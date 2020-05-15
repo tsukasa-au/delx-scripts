@@ -11,7 +11,7 @@ fi
 shift
 MAKEPKG_CMD=("$@")
 if [ ${#MAKEPKG_CMD[@]} -eq 0 ]; then
-    MAKEPKG_CMD=("makepkg" "-sri")
+    MAKEPKG_CMD=("makepkg" "-sr")
 fi
 
 function enter_directory {
