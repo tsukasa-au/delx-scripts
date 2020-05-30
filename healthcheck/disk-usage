@@ -26,6 +26,9 @@ def check_path(path):
 
     if warn:
         print("WARNING! %s has only %s remaining" % (path, pp_size(free)))
+        return False
+
+    return True
 
 def read_fstab():
     for line in open("/etc/fstab"):
@@ -38,8 +41,12 @@ def read_fstab():
 def main():
     paths = set(["/"])
     paths.update(read_fstab())
+    ok = True
     for path in paths:
-        check_path(path)
+        ok = ok and check_path(path)
+
+    if not ok:
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

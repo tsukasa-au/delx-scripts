@@ -1,0 +1,34 @@
+#!/bin/bash
+
+set -eu
+
+if [ -z "${CHRONIC_WRAPPED:-}" ]; then
+    export CHRONIC_WRAPPED=1
+    exec chronic -e "$0"
+fi
+
+. /etc/os-release
+
+function is_debian {
+    [ "$ID" = debian ] || [ "${ID_LIKE:-}" = debian ]
+}
+
+function is_arch {
+    [ "$ID" = arch ]
+}
+
+if is_debian; then
+    echo "# aptorphan"
+    aptorphan 1>&2
+
+    echo "# aptitude search ~U"
+    aptitude search ~U 1>&2
+fi
+
+if is_arch; then
+    echo "# pacorphan"
+    pacorphan 1>&2
+
+    echo "# checkupdates"
+    checkupdates 1>&2
+fi
