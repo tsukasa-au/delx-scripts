@@ -32,7 +32,7 @@ def check_path(path):
 
 def read_fstab():
     for line in open("/etc/fstab"):
-        if line.startswith("#"):
+        if line.startswith("#") or not line.strip():
             continue
         _, path, _ = line.split(maxsplit=2)
         if path.startswith("/"):
