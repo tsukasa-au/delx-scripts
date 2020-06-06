@@ -1,9 +1,9 @@
 #!/bin/bash
 
-if systemctl is-failed -q '*'; then
-    echo -e "# systemctl --failed"
-    systemctl --failed
-    exit 1
-else
+if systemctl is-system-running > /dev/null; then
     exit 0
 fi
+
+echo -e "# systemctl --failed"
+systemctl --failed
+exit 1

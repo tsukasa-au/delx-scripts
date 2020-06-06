@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if systemctl --user is-system-running > /dev/null; then
+    exit 0
+fi
+
+if systemctl --user is-system-running 2>&1 | grep -q 'Failed to connect to bus'; then
+    exit 0
+fi
+
+echo -e "# systemctl --user --failed"
+systemctl --user --failed
+exit 1

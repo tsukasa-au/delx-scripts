@@ -7,7 +7,7 @@ set -eu
 cd "$(dirname "$(readlink -f "$0")")"
 
 for i in ./*; do
-    if [ "$i" != "$(basename "$0")" ]; then
+    if [ "$(basename "$i")" != "$(basename "$0")" ]; then
         if ! "$i"; then
             echo -e "\n^^ FAILED! $(hostname) $PRETTY_NAME -- $i ^^\n"
             exit 1
