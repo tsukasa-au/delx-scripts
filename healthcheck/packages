@@ -28,7 +28,4 @@ fi
 if is_arch; then
     echo "# pacorphan"
     pacorphan 1>&2
-
-    echo "# checkupdates"
-    checkupdates 1>&2
 fi

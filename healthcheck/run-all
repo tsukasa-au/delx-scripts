@@ -3,6 +3,7 @@
 set -eu
 
 . /etc/os-release
+. ~/.bashrc
 
 cd "$(dirname "$(readlink -f "$0")")"
 
