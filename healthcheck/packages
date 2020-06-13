@@ -20,9 +20,6 @@ function is_arch {
 if is_debian; then
     echo "# aptorphan"
     aptorphan 1>&2
-
-    echo "# aptitude search ~U"
-    aptitude search ~U 1>&2 || true
 fi
 
 if is_arch; then
