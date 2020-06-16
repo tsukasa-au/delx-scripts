@@ -1,0 +1,17 @@
+#!/bin/bash
+
+cd ~/.config/systemd/user/ &> /dev/null || exit 0
+
+error=0
+for timer in *.timer; do
+    if ! systemctl --user is-enabled "$timer" > /dev/null; then
+        echo "disabled timer $timer"
+        error=1
+    fi
+    if ! systemctl --user is-active "$timer" > /dev/null; then
+        echo "inactive timer $timer"
+        error=1
+    fi
+done
+
+exit "$error"
