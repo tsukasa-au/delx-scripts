@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if ! command -v zpool > /dev/null; then
+   exit 0
+fi
+
+if zpool list -H -o health,name | grep -qv ONLINE; then
+   zpool status -v
+fi
