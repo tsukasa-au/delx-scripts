@@ -1,10 +1,9 @@
 #!/bin/bash
 
-for dev in /dev/sd?; do
-    if ! udevadm info "$dev" | grep -q ID_BUS=ata; then
-        continue
-    fi
-    name="$(udevadm info "$dev" | awk -F= '/ID_SERIAL=/ {print $2}')"
+DISKS="$(grep -Eo '^/dev/[^ ]+' /etc/smartd.conf)"
+
+for dev in $DISKS; do
+    name="$(basename "$dev" | sed 's/^ata-//')"
     logfile="/var/log/smart/${name}/$(date +%Y-%m-%d_%H:%M).txt"
     mkdir -p "$(dirname "$logfile")"
     smartctl -a "$dev" > "$logfile"
