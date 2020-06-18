@@ -13,7 +13,7 @@ function is_arch {
 }
 
 if is_debian; then
-    aptitude search ~U
+    aptitude search ~U || true
 fi
 
 if is_arch; then
