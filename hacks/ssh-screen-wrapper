@@ -6,7 +6,7 @@ hostname="$(basename "$0")"
 local_hostname="${hostname}.localnet"
 public_hostname="p${hostname}"
 
-if grep -q "^Host ${hostname}$" ~/.ssh/config; then
+if grep -Eq "^Host ${hostname}\b" ~/.ssh/config; then
     true
 elif ping -c1 -t1 "$local_hostname" &> /dev/null; then
     hostname="$local_hostname"
