@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -eu
+
+. /etc/os-release
+
+function is_debian {
+    [ "$ID" = debian ] || [ "${ID_LIKE:-}" = debian ]
+}
+
+function is_arch {
+    [ "$ID" = arch ]
+}
+
+if is_debian; then
+    aptitude search ~U
+fi
+
+if is_arch; then
+    checkupdates
+fi
