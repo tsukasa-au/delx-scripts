@@ -9,20 +9,16 @@ fi
 
 . /etc/os-release
 
-function is_debian {
-    [ "$ID" = debian ] || [ "${ID_LIKE:-}" = debian ]
+function is_distro {
+    [ "$ID" = "$1" ] || [ "${ID_LIKE:-}" = "$1" ]
 }
 
-function is_arch {
-    [ "$ID" = arch ]
-}
-
-if is_debian; then
+if is_distro debian; then
     echo "# aptorphan"
     aptorphan 1>&2
 fi
 
-if is_arch; then
+if is_distro arch; then
     echo "# pacorphan"
     pacorphan 1>&2
 fi
