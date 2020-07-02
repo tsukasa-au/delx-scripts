@@ -55,6 +55,9 @@ function formatScanResult(scanResult) {
         if (line.startsWith('DS Parameter set: channel')) {
             partial.channel = line.split(':')[1].trim();
         }
+        if (line.startsWith('* primary channel:')) {
+            partial.channel = 'channel ' + line.split(':')[1].trim();
+        }
         if (line.startsWith('freq: ')) {
             partial.freq = 'freq ' + line.split(':')[1].trim();
         }
