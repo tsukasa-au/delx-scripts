@@ -2,6 +2,7 @@
 'use strict'
 
 const {exec} = require('child_process');
+const fs = require('fs').promises;
 
 function execAsync(command, opts) {
     return new Promise((resolve, reject) => {
@@ -30,11 +31,14 @@ async function findInterface() {
 
 async function scanInterface(iface) {
     const {stdout} = await execAsync(`sudo iw dev ${iface} scan`);
+    return stdout;
+}
 
+function formatScanResult(scanResult) {
     const results = [];
     let partial = null;
 
-    for (let line of stdout.split('\n')) {
+    for (let line of scanResult.split('\n')) {
         if (line.startsWith('BSS ')) {
             finishPartial();
             partial = {};
@@ -75,21 +79,28 @@ async function scanInterface(iface) {
     return results
         .sort()
         .map(([, {bssid, ssid, signal, channel}]) => {
-            ssid = ssid.padStart(40, ' ');
-            channel = channel.padEnd(10, ' ');
+            ssid = ssid.padStart(40, ' ').substr(0, 40);
+            channel = channel.padEnd(12, ' ');
             return `${signal}  ${channel}  ${ssid}  ${bssid}`;
         })
         .join('\n') + '\n';
 }
 
 async function main() {
-    const iface = await findInterface();
+    const iface = process.argv[2] || await findInterface();
 
-    for (;;) {
-        const scanResult = await scanInterface(iface).catch((err) => err.toString());
-        process.stdout.write('\x1b[2J\x1b[0f');
-        process.stdout.write(scanResult);
-        await sleep(3000);
+    if (iface === '-') {
+        const scanResult = await fs.readFile('/dev/stdin', 'utf-8');
+        const prettyScanResult = formatScanResult(scanResult);
+        process.stdout.write(prettyScanResult);
+    } else {
+        for (;;) {
+            const scanResult = await scanInterface(iface).catch((err) => err.toString());
+            const prettyScanResult = formatScanResult(scanResult);
+            process.stdout.write('\x1b[2J\x1b[0f');
+            process.stdout.write(prettyScanResult);
+            await sleep(3000);
+        }
     }
 }
 
