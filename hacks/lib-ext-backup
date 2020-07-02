@@ -48,6 +48,7 @@ function pool_export {
 }
 
 function pool_setup {
+    zpool set failmode=continue "$ZPOOLNAME"
     zfs set mountpoint="/mnt/$ZPOOLNAME" "$ZPOOLNAME"
     chmod 0700 "/mnt/$ZPOOLNAME"
     zfs set compression=lz4 "$ZPOOLNAME"
