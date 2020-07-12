@@ -17,5 +17,5 @@ if is_debian; then
 fi
 
 if is_arch; then
-    checkupdates
+    checkupdates || true
 fi
