@@ -79,6 +79,11 @@ function pool_maybe_scrub {
         sleep 60
     done
     echo " done"
+
+    if zpool list -H -o health "$ZPOOLNAME" | grep -qv ONLINE; then
+        zpool status -v "$ZPOOLNAME"
+        return 1
+    fi
 }
 
 function syncoidw {
