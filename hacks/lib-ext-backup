@@ -48,7 +48,7 @@ function pool_export {
 }
 
 function pool_setup {
-    zpool set failmode=continue "$ZPOOLNAME"
+    zpool set failmode=wait "$ZPOOLNAME"
     zfs set mountpoint="/mnt/$ZPOOLNAME" "$ZPOOLNAME"
     chmod 0700 "/mnt/$ZPOOLNAME"
     zfs set compression=lz4 "$ZPOOLNAME"
@@ -74,7 +74,7 @@ function pool_maybe_scrub {
     echo "> zpool scrub $ZPOOLNAME"
     zpool scrub "$ZPOOLNAME"
 
-    while zpool status "$ZPOOLNAME" | grep -q "scrub in progress"; do
+    while zpool status "$ZPOOLNAME" | awk '/state: ONLINE|scan: scrub in progress/ {x++} END {exit x-2}'; do
         echo -n .
         sleep 60
     done
