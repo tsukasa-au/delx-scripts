@@ -101,6 +101,19 @@ function snapshot_cleanup {
         | xargs -rn1 zfs destroy -v
 }
 
+function snapshot_convert_to_bookmarks {
+    local fs
+    local snap
+
+    for fs in "$@"; do
+        for snap in $(zfs list -H -o name -t snapshot -r "$fs"); do
+            echo "> zfs bookmark $snap"
+            zfs bookmark "$snap" "${snap/@/#}"
+            zfs destroy "$snap"
+        done
+    done
+}
+
 function main {
     zfs get all -s local -H > /root/zfs-props.txt
     cryptsetup_open
