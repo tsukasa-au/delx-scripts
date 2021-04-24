@@ -1,0 +1,73 @@
+#!/usr/bin/env node
+
+'use strict';
+
+const BLOCKSIZE = 3;
+const CHARS1 = [
+    ' ',
+    ...'0123456789'.split(''),
+    ...'abcdefghijklmnopqrstuvwxyz'.split(''),
+    '_',
+    '-',
+];
+const SHIFT = BigInt(Math.ceil(Math.log2(CHARS1.length ** BLOCKSIZE)));
+const MASK = 2n**SHIFT - 1n;
+
+const CHARSN = [...Array(BLOCKSIZE - 1)].reduce((acc) => acc.map((v1) => CHARS1.map((v2) => ''+v1+v2)).flat(), CHARS1);
+const FMAP = new Map(CHARSN.map((v, i) => [''+v, BigInt(i)]));
+const RMAP = new Map(CHARSN.map((v, i) => [BigInt(i), ''+v]));
+
+function main(arg1, arg2) {
+    if (!arg1) {
+        console.error('Usage: hexhost fdxx::4a59954e');
+        console.error('Usage: hexhost fdxx:: hostname');
+        process.exit(1);
+    }
+
+    if (arg2) {
+        const prefix = arg1;
+        const suffix = encode(arg2).replaceAll(/(.{4})/g, '$1:').replace(/:$/, '');
+        console.log(prefix + suffix);
+    } else {
+        const [, suffix] = arg1.split(/::|:0:/);
+        console.log(decode(suffix));
+    }
+}
+
+function decode(input) {
+    input = input && input.replaceAll(':', '');
+    if (!input) {
+        throw new Error('No suffix found');
+    }
+    input = BigInt('0x' + input);
+    let output = [];
+    while (input > 0) {
+        const encodedBlock = input & MASK;
+        input >>= SHIFT;
+        const block = RMAP.get(encodedBlock);
+        if (block !== undefined) {
+            output.push(block);
+        }
+    }
+    return output.reverse().join('').trim();
+}
+
+function encode(input) {
+    if (input.length / BLOCKSIZE > (64n / SHIFT)) {
+        throw new Error('Input is too long to fit in a /64!');
+    }
+
+    input = input.toLowerCase();
+
+    let out = BigInt(0);
+    for (let i = 0; i < input.length; i += BLOCKSIZE) {
+        const block = input.substring(i, i + BLOCKSIZE).padEnd(BLOCKSIZE);
+        const encodedBlock = FMAP.get(block);
+        if (encodedBlock !== undefined) {
+            out = (out << SHIFT) + encodedBlock;
+        }
+    }
+    return out.toString(16);
+}
+
+main(process.argv[2], process.argv[3]);
