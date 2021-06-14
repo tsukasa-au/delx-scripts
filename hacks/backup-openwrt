@@ -1,0 +1,11 @@
+#!/bin/bash
+
+BACKUP_HOSTS="$(awk '/^Host.*openwrt/ {print $2}' < ~/.ssh/config)"
+
+cd ~/backup-openwrt/
+
+for host in $BACKUP_HOSTS; do
+    file="${host}.backup.tar.gz"
+    ssh "$host" sysupgrade -b - > "${file}.new" && mv "${file}.new" "${file}"
+done
+
