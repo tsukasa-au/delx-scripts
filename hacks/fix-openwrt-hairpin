@@ -1,0 +1,8 @@
+#!/bin/bash
+
+AP_HOSTS="$(awk '/^Host.*openwrt/ {print $2}' < ~/.ssh/config | grep -v router)"
+
+for host in $AP_HOSTS; do
+    ssh "$host" 'for f in /sys/devices/virtual/net/*/*wlan*/brport/hairpin_mode; do echo 1 > "$f"; done'
+done
+
