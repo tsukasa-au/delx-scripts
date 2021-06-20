@@ -63,6 +63,8 @@ function formatScanResult(scanResult) {
         }
     }
 
+    finishPartial();
+
     function finishPartial() {
         if (!partial) {
             return;
