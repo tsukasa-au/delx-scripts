@@ -43,6 +43,7 @@ function formatScanResult(scanResult) {
             finishPartial();
             partial = {};
             partial.bssid = line.match(/[a-z0-9:]+/)[0];
+            partial.associated = line.indexOf('associated') >= 0 ? '**' : '';
         }
 
         line = line.trim()
@@ -83,10 +84,10 @@ function formatScanResult(scanResult) {
 
     return results
         .sort()
-        .map(([, {bssid, ssid, signal, channel}]) => {
+        .map(([, {bssid, ssid, signal, channel, associated}]) => {
             ssid = ssid.padStart(40, ' ').substr(0, 40);
             channel = channel.padEnd(12, ' ');
-            return `${signal}  ${channel}  ${ssid}  ${bssid}`;
+            return `${signal}  ${channel}  ${ssid}  ${bssid}  ${associated}`;
         })
         .join('\n') + '\n';
 }
