@@ -7,6 +7,9 @@ function cryptsetup_open {
         fi
         DISKNAME="$(basename "$DEVICE")"
         CRYPTNAME="crypt-$DISKNAME"
+        if [ -L "/run/ext-backup-crypt/$CRYPTNAME" ]; then
+            continue
+        fi
         echo "> cryptsetup luksOpen $DEVICE $CRYPTNAME"
         cryptsetup luksOpen "$DEVICE" "$CRYPTNAME" --key-file "/etc/lukskeys/${DISKNAME}"
         mkdir -p /run/ext-backup-crypt/
