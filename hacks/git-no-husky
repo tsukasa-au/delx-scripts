@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ "$1" = "config" ] && [ -z "${GIT_CONFIG_ENABLE}" ] && ! [[ "$2" =~ --get ]]; then
+    echo "Ignoring git $*"
+    exit 0
+fi
+
+/usr/bin/git "$@"
