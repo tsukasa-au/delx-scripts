@@ -185,6 +185,21 @@ for iso in /ubuntu-*-desktop-*.iso /isos/ubuntu-*-desktop-*.iso; do
   fi
 done
 
+function setup_tails {
+  menuentry "\$1" {
+    loopback loop \$1
+    echo "Loading kernel..."
+    linux (loop)/live/vmlinuz* initrd=/live/initrd.img boot=live config iso-scan/filename=\$1 findiso=\$1 nopersistence noprompt timezone=Etc/UTC noautologin module=Tails slab_nomerge slub_debug=FZP mce=0 vsyscall=none page_poison=1 init_on_free=1 mds=full,nosmt splash quiet
+    echo "Loading initrd..."
+    initrd (loop)/live/initrd*
+  }
+}
+for iso in /tails-*.iso /isos/tails-*.iso; do
+  if [ -f "\$iso" ]; then
+    setup_tails \$iso
+  fi
+done
+
 EOT
 }
 
