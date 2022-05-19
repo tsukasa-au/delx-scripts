@@ -112,8 +112,10 @@ search --set=root --label $PARTITION_LABEL
 function setup_arch {
   menuentry "\$1" {
     loopback loop \$1
-    linux (loop)/arch/boot/x86_64/vmlinuz-linux img_label=${PARTITION_LABEL} img_loop=\$1 archisobasedir=arch earlymodules=loop
-    initrd (loop)/arch/boot/x86_64/initramfs-linux.img
+    echo "Loading kernel..."
+    linux (loop)/arch/boot/x86_64/vmlinuz-* img_label=${PARTITION_LABEL} img_loop=\$1 archisobasedir=arch earlymodules=loop
+    echo "Loading initrd (and microcode if they exist)..."
+    initrd (loop)/arch/boot/*.img (loop)/arch/boot/x86_64/initramfs-*.img
   }
 }
 for iso in /archlinux-*.iso; do
