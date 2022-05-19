@@ -108,12 +108,19 @@ insmod part_msdos
 insmod progress
 insmod regexp
 search --set=root --label $PARTITION_LABEL
+set maybe_to_ram=''
+
+menuentry "Copy ISO image to ram before booting" {
+  # copytoram is used by arch
+  # toram is used by casper based images (tails, Ubuntu, etc)
+  set maybe_to_ram="copytoram toram"
+}
 
 function setup_arch {
   menuentry "\$1" {
     loopback loop \$1
     echo "Loading kernel..."
-    linux (loop)/arch/boot/x86_64/vmlinuz-* img_label=${PARTITION_LABEL} img_loop=\$1 archisobasedir=arch earlymodules=loop
+    linux (loop)/arch/boot/x86_64/vmlinuz-* img_label=${PARTITION_LABEL} img_loop=\$1 archisobasedir=arch earlymodules=loop \$maybe_to_ram
     echo "Loading initrd (and microcode if they exist)..."
     initrd (loop)/arch/boot/*.img (loop)/arch/boot/x86_64/initramfs-*.img
   }
@@ -189,7 +196,7 @@ function setup_tails {
   menuentry "\$1" {
     loopback loop \$1
     echo "Loading kernel..."
-    linux (loop)/live/vmlinuz* initrd=/live/initrd.img boot=live config iso-scan/filename=\$1 findiso=\$1 nopersistence noprompt timezone=Etc/UTC noautologin module=Tails slab_nomerge slub_debug=FZP mce=0 vsyscall=none page_poison=1 init_on_free=1 mds=full,nosmt splash quiet
+    linux (loop)/live/vmlinuz* initrd=/live/initrd.img boot=live config iso-scan/filename=\$1 findiso=\$1 nopersistence noprompt timezone=Etc/UTC noautologin module=Tails slab_nomerge slub_debug=FZP mce=0 vsyscall=none page_poison=1 init_on_free=1 mds=full,nosmt splash quiet \$maybe_to_ram
     echo "Loading initrd..."
     initrd (loop)/live/initrd*
   }
