@@ -3,7 +3,7 @@
 set -eu
 
 PARTITION_LABEL="multiboot"
-MULTIBOOT_MNT="/mnt/multiboot"
+MULTIBOOT_MNT="${MULTIBOOT_MNT:-/mnt/multiboot}"
 
 function cmd_format {
     if [ ! -b "${1:-}" ]; then
@@ -58,7 +58,12 @@ function install_grub_efi {
 }
 
 function install_grub_cfg {
-    print_grub_cfg | sudo tee "${MULTIBOOT_MNT}/grub/grub.cfg" > /dev/null
+    if [[ -w "${MULTIBOOT_MNT}/grub/" ]]; then
+        # We already have write access, no need to use sudo
+        print_grub_cfg > "${MULTIBOOT_MNT}/grub/grub.cfg"
+    else
+        print_grub_cfg | sudo tee "${MULTIBOOT_MNT}/grub/grub.cfg" > /dev/null
+    fi
 }
 
 function cmd_mount {
