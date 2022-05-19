@@ -118,7 +118,7 @@ function setup_arch {
     initrd (loop)/arch/boot/*.img (loop)/arch/boot/x86_64/initramfs-*.img
   }
 }
-for iso in /archlinux-*.iso; do
+for iso in /archlinux-*.iso /isos/archlinux-*.iso; do
   if [ -f "\$iso" ]; then
     setup_arch \$iso
   fi
@@ -158,11 +158,13 @@ function setup_fedora {
   menuentry "\$1" {
     loopback loop \$1
     probe -s iso_label -l (loop)
+    echo "Loading kernel..."
     linux (loop)/isolinux/vmlinuz root=live:CDLABEL=\$iso_label rd.live.image quiet iso-scan/filename=\$1
+    echo "Loading initrd..."
     initrd (loop)/isolinux/initrd.img
   }
 }
-for iso in /Fedora-Workstation-Live-*.iso; do
+for iso in /Fedora-Workstation-Live-*.iso /isos/Fedora-Workstation-Live-*.iso; do
   if [ -f "\$iso" ]; then
     setup_fedora \$iso
   fi
@@ -171,11 +173,13 @@ done
 function setup_ubuntu {
   menuentry "\$1" {
     loopback loop \$1
-    linux (loop)/casper/vmlinuz* boot=casper quiet iso-scan/filename=\$1
+    echo "Loading kernel..."
+    linux (loop)/casper/vmlinuz* boot=casper quiet iso-scan/filename=\$1 \$maybe_to_ram
+    echo "Loading initrd..."
     initrd (loop)/casper/initrd*
   }
 }
-for iso in /ubuntu-*-desktop-*.iso; do
+for iso in /ubuntu-*-desktop-*.iso /isos/ubuntu-*-desktop-*.iso; do
   if [ -f "\$iso" ]; then
     setup_ubuntu \$iso
   fi
